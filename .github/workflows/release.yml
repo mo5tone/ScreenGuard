@@ -1,0 +1,336 @@
+# =============================================================================================
+# ScreenGuard — Release (CD). DORMANT UNTIL THE FIRST VERSION TAG IS PUSHED.
+#
+# Versioning is deliberately deferred: this repository has never been tagged, and nothing here
+# creates a tag. The pipeline exists so that the FIRST tag works, and it stays asleep until someone
+# runs:
+#
+#     git tag -a v1.0.0 -m "ScreenGuard 1.0.0"
+#     git push origin v1.0.0
+#
+# TAG PREFIX CONVENTION: "v", as in v1.0.0. Swift Package Manager accepts BOTH "v1.0.0" and "1.0.0"
+# in a `.package(url:from:)` requirement (the "v" is stripped when the version is parsed), so the
+# prefix is a project convention rather than a constraint — but every tag this pipeline releases
+# must carry it, because the trigger pattern and the CHANGELOG lookup are keyed on it.
+#
+# WHAT A TAG PUSH DOES, IN ORDER
+#   1. gate     — the SAME gate as CI, on the tagged commit, BEFORE anything is published:
+#                 the full `mise run ci:local` sequence (generate -> format:check -> lint ->
+#                 shellcheck -> build -> test -> demo:build), plus the generated-project proof, the
+#                 Scripts/ci shellcheck and actionlint that CI adds on top. A tag whose commit does
+#                 not build and pass the full test suite cannot reach the release job at all.
+#   2. release  — validates the tag shape, requires the tag to be an ancestor of main, requires
+#                 CHANGELOG.md to have a non-empty section for exactly this version (and to be
+#                 current — see below), generates the notes with the PINNED git-cliff from the
+#                 Conventional Commit history, and then creates the GitHub Release.
+#
+# PERMISSIONS
+#   The workflow and the gate job hold `contents: read`. Only the release job holds
+#   `contents: write`, and it needs it for one call — `gh release create`. No other job can write,
+#   nothing pushes a commit, and nothing rewrites the CHANGELOG.
+#   (If the repository's default workflow permissions are set to read-only, the release call fails
+#   with a 403 — loudly, which is the intended behaviour: the run must not look like a release.)
+#
+# WHY THE CHANGELOG AND THE TAG ARE CROSS-CHECKED
+#   CHANGELOG.md is curated by hand and the release notes are generated, so the two can drift: a tag
+#   can be pushed for a version the changelog never heard of, or the changelog's newest entry can be
+#   older than the tag. Both cases fail this workflow before anything is published. What the check
+#   proves — and what it does not — is stated next to the step itself.
+#
+# NO THIRD-PARTY RELEASE ACTION
+#   The GitHub Release is created with `gh` (preinstalled and authenticated through GH_TOKEN), so
+#   there is no release action to pin, no third-party code with write access to this repository.
+# =============================================================================================
+
+name: Release
+
+on:
+  # ONLY version tags. A branch push, a pull request or a manual dispatch cannot start this
+  # workflow, so no unreleased commit can ever be published by accident.
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*-*"   # pre-releases, e.g. v1.0.0-rc.1
+
+# Least privilege at the workflow level; the release job raises only what it needs.
+permissions:
+  contents: read
+
+env:
+  # The same documented Simulator destination CI uses, overridable with the DESTINATION Actions
+  # variable. It must be defined here as well as in ci.yml: the gate below runs the CI sequence
+  # against it, and an unset destination would make the preflight fail (loudly, but for a reason
+  # that has nothing to do with the tagged commit).
+  DESTINATION: ${{ vars.DESTINATION || 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' }}
+
+# A release must never be cancelled or superseded: every tag gets its own run.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # -------------------------------------------------------------------------------------------
+  # The gate: the same validation CI runs, on the tagged commit, before anything is published.
+  # -------------------------------------------------------------------------------------------
+  gate:
+    name: gate
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the mise-pinned toolchain from .mise.toml
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.6
+          install: true
+          cache: true
+
+      - name: Trust the repository mise config
+        run: |
+          mise trust
+          mise tasks >/dev/null
+
+      - name: Print the selected Xcode version, SDK and pinned tools
+        run: Scripts/ci/print-toolchain.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve the Simulator destination (no silent fallback)
+        run: Scripts/ci/check-destination.sh "$DESTINATION"
+
+      # The whole CI sequence, in CI's order, with CI's tools. `ci:local` is the same contract the
+      # CI workflow mirrors, so the release gate cannot drift from it.
+      - name: Run the full CI gate on the tagged commit
+        run: mise run ci:local
+
+      - name: Prove the generated Xcode projects stay untracked
+        run: Scripts/ci/verify-generated-projects.sh
+
+      - name: Static analysis of the CI helper scripts — shellcheck --severity=error
+        run: shellcheck --severity=error Scripts/ci/*.sh
+
+      - name: Lint the workflow YAML — actionlint over .github/workflows
+        run: mise exec -- actionlint
+
+  # -------------------------------------------------------------------------------------------
+  # The release: only runs when the gate above passed.
+  # -------------------------------------------------------------------------------------------
+  release:
+    name: release
+    needs: [gate]
+    runs-on: macos-26
+    timeout-minutes: 30
+    # The ONLY job in this repository that can write to it, and only to create the Release.
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the repository with its full history and tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # git-cliff groups commits by tag and needs the whole history; the ancestry check below
+          # needs the tags too.
+          fetch-depth: 0
+
+      - name: Install the mise-pinned toolchain from .mise.toml
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.6
+          install: true
+          cache: true
+
+      - name: Trust the repository mise config
+        run: |
+          mise trust
+          mise tasks >/dev/null
+
+      - name: Print the selected Xcode version and pinned tools
+        run: Scripts/ci/print-toolchain.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # `GITHUB_REF_NAME` is the tag; the trigger already limits this workflow to vX.Y.Z tags, but a
+      # failed assumption here would silently mis-address the CHANGELOG and the Release, so it is
+      # checked rather than trusted.
+      - name: Validate the tag and derive the version
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?(\+[0-9A-Za-z.]+)?$'; then
+            echo "FAIL: tag '$tag' is not a vX.Y.Z version tag (with an optional -prerelease)."
+            echo "      This workflow releases version tags only; nothing has been published."
+            exit 1
+          fi
+          version="${tag#v}"
+          printf 'tag=%s\nversion=%s\n' "$tag" "$version" >> "$GITHUB_ENV"
+          echo "releasing tag $tag (version $version)"
+
+      # Releasing from a side branch is how a repository ends up with a public version that was
+      # never on main. The fetch is explicit so the check cannot pass by accident on a shallow clone.
+      - name: Fail if the tagged commit is not on main
+        run: |
+          if ! git fetch --no-tags origin main; then
+            echo "FAIL: could not fetch main, so the tag's ancestry could not be checked."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "FAIL: the tagged commit $GITHUB_SHA is NOT an ancestor of main."
+            echo "      A release must be cut from main; nothing has been published."
+            exit 1
+          fi
+          echo "the tagged commit is on main"
+
+      # WHAT THIS PROVES: CHANGELOG.md has a section for exactly this version, that section has
+      # content, and it is the newest released section in the file (so the changelog was actually
+      # updated for this release).
+      # WHAT IT DOES NOT PROVE: that every commit in the tag's range is described in that section.
+      # The changelog is curated prose; the generated notes below are the per-commit record, and the
+      # coverage counts printed here are information for the maintainer, not a gate.
+      - name: Fail if the CHANGELOG disagrees with the tag
+        run: |
+          changelog=CHANGELOG.md
+          if [ ! -f "$changelog" ]; then
+            echo "FAIL: $changelog is missing, so the tag cannot be checked against it."
+            exit 1
+          fi
+
+          # A heading looks like "## [1.0.0] — 2026-10-02", "## [v1.0.0]", "## 1.0.0 - date".
+          # Only the version token is compared, so the date and separator stay free-form.
+          headline=$(awk -v want="$version" '
+              BEGIN { found = 0; top = "" }
+              /^## / {
+                  text = $0
+                  sub(/^##[[:space:]]*/, "", text)
+                  if (substr(text, 1, 1) == "[") text = substr(text, 2)
+                  token = text
+                  sub(/[][[:space:]].*$/, "", token)
+                  if (token == "") next
+                  if (tolower(token) == "unreleased") next
+                  if (top == "") top = token
+                  if (token == want || token == "v" want) found = 1
+              }
+              END { printf "found=%d\ntop=%s\n", found, top }
+          ' "$changelog")
+          found=$(printf '%s\n' "$headline" | sed -n 's/^found=//p')
+          top=$(printf '%s\n' "$headline" | sed -n 's/^top=//p')
+
+          if [ "$found" != "1" ]; then
+            echo "FAIL: CHANGELOG.md has no section for $version."
+            echo "      Add a '## [$version] — <date>' section and commit it before tagging."
+            echo "      Nothing has been published."
+            exit 1
+          fi
+          if [ "$top" != "$version" ] && [ "$top" != "v$version" ]; then
+            echo "FAIL: the newest released section in CHANGELOG.md is '$top', not '$version'."
+            echo "      The changelog is stale relative to this tag; nothing has been published."
+            exit 1
+          fi
+
+          # The section must have content: a heading with nothing under it is not a changelog entry.
+          body_lines=$(awk -v want="$version" '
+              BEGIN { inside = 0; body = 0 }
+              /^## / {
+                  if (inside) inside = 0
+                  text = $0
+                  sub(/^##[[:space:]]*/, "", text)
+                  if (substr(text, 1, 1) == "[") text = substr(text, 2)
+                  token = text
+                  sub(/[][[:space:]].*$/, "", token)
+                  if (token == want || token == "v" want) inside = 1
+                  next
+              }
+              inside {
+                  line = $0
+                  gsub(/[[:space:]]/, "", line)
+                  if (line == "" || line == "---" || line ~ /^<!--/) next
+                  body++
+              }
+              END { print body }
+          ' "$changelog")
+
+          if [ "$body_lines" -lt 1 ]; then
+            echo "FAIL: the CHANGELOG section for $version is empty."
+            echo "      Nothing has been published."
+            exit 1
+          fi
+
+          echo "CHANGELOG.md has a section for $version ($body_lines non-blank lines) and it is the newest released section."
+          {
+            echo "## CHANGELOG section for $version"
+            echo
+            awk -v want="$version" '
+                BEGIN { inside = 0 }
+                /^## / {
+                    if (inside) exit
+                    text = $0
+                    sub(/^##[[:space:]]*/, "", text)
+                    if (substr(text, 1, 1) == "[") text = substr(text, 2)
+                    token = text
+                    sub(/[][[:space:]].*$/, "", token)
+                    if (token == want || token == "v" want) { inside = 1 }
+                    next
+                }
+                inside { print }
+            ' "$changelog"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The notes are GENERATED from the Conventional Commit history by the pinned git-cliff
+      # (`mise run ci:local` has already proven the history is on main and that the pr-title gate
+      # kept it conventional). `--latest` renders the section for the newest tag, which is the tag
+      # being released here; the heading is asserted below so a mismatch fails instead of publishing
+      # another release's notes.
+      - name: Generate the release notes with the pinned git-cliff
+        run: |
+          notes="$RUNNER_TEMP/release-notes.md"
+          mise exec -- git-cliff --config cliff.toml --latest --output "$notes"
+
+          if [ ! -s "$notes" ]; then
+            echo "FAIL: git-cliff produced empty release notes for $tag."
+            echo "      A release with no notes is a silent downgrade; nothing has been published."
+            exit 1
+          fi
+          if ! grep -qF "## $version " "$notes"; then
+            echo "FAIL: the generated notes are not for $version."
+            echo "      git-cliff --latest renders the NEWEST tag's section. Head of the notes:"
+            head -3 "$notes"
+            echo "      Nothing has been published."
+            exit 1
+          fi
+
+          {
+            echo
+            echo "---"
+            echo
+            printf 'The curated changelog for this release: [CHANGELOG.md](%s/%s/blob/%s/CHANGELOG.md)\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$tag"
+          } >> "$notes"
+
+          echo "generated $(wc -l < "$notes" | tr -d ' ') lines of release notes:"
+          cat "$notes"
+          {
+            echo
+            echo "## Generated release notes"
+            echo
+            cat "$notes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # No third-party action: `gh` ships on the runner and is authenticated with the workflow token.
+      # --verify-tag means "the tag must already exist", so this call can never create one.
+      # An existing Release is NOT overwritten: a re-run after a partial failure finds nothing to
+      # clobber, and a re-run after a successful release fails loudly instead of rewriting history.
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "FAIL: a GitHub Release for $tag already exists; this workflow does not overwrite releases."
+            echo "      Delete it deliberately (gh release delete $tag) if it must be recreated."
+            exit 1
+          fi
+
+          if printf '%s' "$version" | grep -q -- '-'; then
+            gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/release-notes.md" --verify-tag --prerelease
+          else
+            gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/release-notes.md" --verify-tag
+          fi
+
+          echo "published $tag"
+          gh release view "$tag" --json url,isPrerelease,tagName --jq '.tagName + " " + .url + " prerelease=" + (.isPrerelease | tostring)'

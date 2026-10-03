@@ -1,0 +1,92 @@
+# =============================================================================================
+# cliff.toml — release-note generation for ScreenGuard (git-cliff, pinned in .mise.toml).
+#
+# WHY THIS FILE EXISTS
+#   Pull-request titles are enforced as Conventional Commits by .github/workflows/ci.yml, so the
+#   history on `main` is machine-readable. This configuration turns that history into the release
+#   notes that .github/workflows/release.yml attaches to a GitHub Release.
+#
+#   It is deliberately NOT a "rewrite CHANGELOG.md" tool. CHANGELOG.md is curated by hand (Keep a
+#   Changelog); these notes are generated. release.yml FAILS the release when the tag has no
+#   matching CHANGELOG section, so the two can never drift apart silently.
+#
+# TAGS
+#   tag_pattern = "v[0-9]*" — the tag prefix convention is "v" (v1.0.0). Swift Package Manager
+#   accepts both "v1.0.0" and "1.0.0" in a `.package(url:from:)` requirement, so the prefix is a
+#   convention, not a constraint; this file and release.yml assume "v".
+#
+# RUN IT
+#   mise exec -- git-cliff --config cliff.toml --unreleased        # what is not released yet
+#   mise exec -- git-cliff --config cliff.toml --latest            # the newest tag's notes
+#   mise exec -- git-cliff --config cliff.toml --tag v1.0.0        # notes as if v1.0.0 were tagged
+#
+# NO REMOTE LINKS ON PURPOSE
+#   There is no [remote.github] section: this repository has no remote yet, and baking an assumed
+#   owner/repo into the notes would put a URL in a public artefact that nobody has verified. Commit
+#   hashes appear as plain text. Add a [remote.github] section once the published URL is final.
+# =============================================================================================
+
+[changelog]
+# No header: the body below is the GitHub Release body, and the release title already carries the tag.
+header = ""
+# The release body. Group names come from the commit parsers below; a version section is emitted for
+# a tagged release and an "Unreleased" section when no tag is involved.
+body = """
+{% if version %}\
+## {{ version | trim_start_matches(pat="v") }} — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## Unreleased
+{% endif %}\
+{% for entry in commits | commit_groups(groups=commit_parsers_groups) %}\
+{%- if entry.commits %}
+### {{ entry.group }}
+{% for commit in entry.commits %}\
+- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }}\
+{%- if commit.breaking %} — **BREAKING CHANGE**{% endif %}
+{% endfor %}
+{% endif %}\
+{%- endfor %}
+"""
+footer = ""
+# Remove leading/trailing whitespace from the rendered body.
+trim = true
+# Render even when there is nothing to report; release.yml fails loudly if the notes come out empty.
+render_always = true
+
+[git]
+# Parse commits according to the Conventional Commits specification (contributors are held to it by
+# the pr-title gate in ci.yml).
+conventional_commits = true
+# Drop anything that is not a Conventional Commit instead of dumping it into "Other".
+filter_unconventional = true
+# Do not split a commit's body into separate entries.
+split_commits = false
+# A breaking commit is never dropped by the parsers below.
+protect_breaking_commits = true
+# Group order is the order of these rules.
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^style", group = "Style" },
+    { message = "^test", group = "Tests" },
+    { message = "^build", group = "Build" },
+    { message = "^ci", group = "CI" },
+    # Dependency updates are notable and must not be buried in "Chores".
+    { message = "^chore\\(deps", group = "Dependencies" },
+    # Release bookkeeping is noise inside a release's own notes.
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore", group = "Chores" },
+    { message = "^revert", group = "Reverts" },
+]
+# Do not drop a commit just because no parser matched it.
+filter_commits = false
+# The tag prefix convention is "v" (v1.2.3). Nothing else is treated as a release tag.
+tag_pattern = "v[0-9]*"
+skip_tags = ""
+ignore_tags = ""
+# Releases and commits are both ordered oldest-first.
+sort_commits = "oldest"
+topo_order = false
