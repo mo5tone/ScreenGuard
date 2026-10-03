@@ -1,0 +1,292 @@
+# =============================================================================================
+# ScreenGuard — pinned toolchain and task runner (mise)
+#
+# WHY THIS FILE EXISTS
+#   Every gate — lint, format, build, test, demo verification, CI — must run the SAME tool
+#   versions on every machine. Before this file, swiftlint and swiftformat resolved to mise shims
+#   with no version bound to this repository, so the gate died at the shim:
+#
+#       mise ERROR No version is set for shim: swiftlint
+#
+#   "mise install" now binds all six tools, and "mise run <task>" is the supported entry point.
+#
+# USAGE (from the repository root)
+#   mise install                 # once per clone: fetch the pinned versions
+#   mise tasks                   # list the frozen task names below
+#   mise run lint                # the blocking SwiftLint gate over Sources and Tests
+#   mise run ci:local            # the whole CI "validate" chain, in order, failing loudly
+#
+# OVERRIDING THE SIMULATOR DESTINATION
+#   DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' mise run test
+#
+# NEVER "swift build" / "swift test"
+#   This package is iOS-only (platforms: [.iOS(.v15)], import UIKit). Plain SwiftPM CLI builds
+#   resolve the macOS SDK and fail with "unable to resolve module dependency: 'UIKit'"
+#   (docs/TOOLING.md section 1). No task in this file may call them; build and test go through
+#   xcodebuild with an explicit iOS Simulator destination.
+# =============================================================================================
+
+# Guard against a mise old enough to mishandle the task/env features used below. CI installs
+# current mise, so this only fires with a stale local install — loudly, which is the point.
+min_version = "2025.1.0"
+
+# ---------------------------------------------------------------------------------------------
+# [tools] — every pin is exact. "latest" is banned: a gate whose tool version floats is not a
+# gate, because the same unchanged source tree can start failing (or stop failing).
+#
+# Each pin was verified to install and resolve through mise in this repository
+# ("mise install" + "mise exec -- <tool> --version"), not copied from documentation.
+# ---------------------------------------------------------------------------------------------
+[tools]
+
+# SwiftLint 0.65.1 — the version the blocking "lint" gate is baselined against; SwiftLint adds
+# rules between releases, so an unpinned lint would change its verdict on untouched source.
+swiftlint = "0.65.1"
+
+# SwiftFormat 0.63.0 — the version "format" wrote and "format:check" enforces; formatter releases
+# re-indent and re-order code, so a float here would turn a clean tree into a failing gate.
+swiftformat = "0.63.0"
+
+# XcodeGen 2.46.0 — generates both .xcodeproj bundles from project.yml. Pinned so regeneration is
+# byte-stable instead of rewriting every generated project on each run.
+xcodegen = "2.46.0"
+
+# actionlint 1.7.12 — the workflow-YAML linter for .github/workflows/*.yml (run it as
+# "mise exec -- actionlint"); pinned so a new release cannot start failing an unchanged workflow.
+actionlint = "1.7.12"
+
+# shellcheck 0.11.0 — backs the "shellcheck" task over Scripts/; shellcheck turns on new checks in
+# minor releases, which would flip that gate on scripts nobody edited.
+shellcheck = "0.11.0"
+
+# git-cliff 2.14.2 — generates release notes from git history. Pull-request titles are enforced as
+# Conventional Commits, so the history this reads is machine-generated; pinning keeps the
+# changelog's parsing/grouping rules reproducible across releases.
+git-cliff = "2.14.2"
+
+# ---------------------------------------------------------------------------------------------
+# [env] — the iOS Simulator destination shared by build / test / demo:build.
+#
+# The template is load-bearing, not decoration. A literal
+#     DESTINATION = "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
+# would OVERWRITE the caller's value: verified with a probe in this repository's mise version,
+# "DESTINATION=OVERRIDE mise run <task>" still printed the [env] value. That would silently build
+# CI for the wrong device while looking correct. "{{env.DESTINATION|default(value=…)}}" keeps an
+# externally supplied value and falls back to the documented default only when it is unset.
+# ---------------------------------------------------------------------------------------------
+[env]
+DESTINATION = "{{env.DESTINATION|default(value='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2')}}"
+
+# =============================================================================================
+# [tasks] — FROZEN NAMES. CI, the docs and other tasks consume them by name; do not rename.
+# Every task sets dir = "{{config_root}}" so it runs from the repository root even when invoked
+# from a subdirectory. All scripts are POSIX sh (mise runs tasks with "sh" on macOS).
+# =============================================================================================
+
+# ---------------------------------------------------------------------------------------------
+# generate — regenerate both Xcode projects from their xcodegen specs.
+#
+# Both .xcodeproj bundles are GENERATED artifacts (see .gitignore), never hand-edited: each is
+# rebuilt from its project.yml. "xcodegen generate" writes into the directory holding project.yml,
+# so each spec runs in its own subshell. The demo's explicit shared scheme is declared in its
+# project.yml, so regeneration cannot delete it.
+# ---------------------------------------------------------------------------------------------
+[tasks.generate]
+dir = "{{config_root}}"
+description = "Regenerate Examples/ScreenGuardDemo and Research/CaptureMatrix from their project.yml specs"
+run = '''
+set -eu
+( cd Examples/ScreenGuardDemo && xcodegen generate )
+( cd Research/CaptureMatrix    && xcodegen generate )
+'''
+
+# ---------------------------------------------------------------------------------------------
+# lint — the BLOCKING style gate over the shipped library and its tests.
+#
+# "--strict" is what makes it a gate: SwiftLint warnings become failures. Scope is exactly
+# Sources/ and Tests/. Demo and research code is covered separately by "lint:demo", which is
+# advisory by design (deferred, low-priority debt) and must never gate a release.
+# ---------------------------------------------------------------------------------------------
+[tasks.lint]
+dir = "{{config_root}}"
+description = "SwiftLint --strict over Sources and Tests (BLOCKING style gate)"
+run = '''
+set -eu
+swiftlint lint --strict Sources Tests
+'''
+
+# ---------------------------------------------------------------------------------------------
+# lint:demo — ADVISORY. SwiftLint over the demo app and the research harness.
+#
+# This is a visible debt tracker, not a gate: it always exits 0 and says so, so that known
+# low-priority findings in deferred demo/research work are reported without blocking anything.
+# "mise run lint" remains the gate for Sources/ and Tests/.
+# ---------------------------------------------------------------------------------------------
+[tasks."lint:demo"]
+dir = "{{config_root}}"
+description = "SwiftLint over Examples and Research — ADVISORY debt tracker, never fails"
+run = '''
+set -u
+swiftlint lint Examples Research || {
+  echo ""
+  echo "lint:demo is ADVISORY and exits 0 by design: the findings above are known, deferred debt"
+  echo "in demo/research code, NOT a gate. Run 'mise run lint' for the blocking gate."
+}
+exit 0
+'''
+
+# ---------------------------------------------------------------------------------------------
+# format — SwiftFormat in WRITE mode. It rewrites files.
+#
+# Scope is every Swift file in the repository: Package.swift at the root plus the four source
+# trees. (The generated .xcodeproj bundles, .build/ and .swiftpm/ contain no Swift sources, so
+# nothing generated is touched.) SwiftFormat is only ever run with the pinned 0.63.0, so a
+# reformat is reproducible.
+# ---------------------------------------------------------------------------------------------
+[tasks.format]
+dir = "{{config_root}}"
+description = "SwiftFormat (write mode) over every Swift file in the repository"
+run = '''
+set -eu
+swiftformat Package.swift Sources Tests Examples Research
+'''
+
+# ---------------------------------------------------------------------------------------------
+# format:check — the non-mutating twin of "format", for CI.
+#
+# "--lint" reports files that WOULD change and exits non-zero; it never writes. Same pinned
+# version and same file scope as "format", so a local "mise run format" makes this pass.
+# ---------------------------------------------------------------------------------------------
+[tasks."format:check"]
+dir = "{{config_root}}"
+description = "SwiftFormat --lint over every Swift file (no writes); fails if any file would change"
+run = '''
+set -eu
+swiftformat --lint Package.swift Sources Tests Examples Research
+'''
+
+# ---------------------------------------------------------------------------------------------
+# build — xcodebuild, never "swift build" (iOS-only package, docs/TOOLING.md section 1).
+#
+# The scheme is the package's own (one library product => scheme "ScreenGuard"; re-check with
+# "xcodebuild -list" if the product list ever changes, docs/TOOLING.md section 1.1). Each task
+# gets its own -derivedDataPath so parallel runs cannot fight over the derived-data lock.
+# ---------------------------------------------------------------------------------------------
+[tasks.build]
+dir = "{{config_root}}"
+description = "xcodebuild build -scheme ScreenGuard for the iOS Simulator DESTINATION"
+run = '''
+set -eu
+: "${DESTINATION:?DESTINATION is unset or empty — export DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2'}"
+exec xcodebuild build \
+  -scheme ScreenGuard \
+  -destination "$DESTINATION" \
+  -derivedDataPath .build/build-dd
+'''
+
+# ---------------------------------------------------------------------------------------------
+# test — xcodebuild test, never "swift test" (same iOS-only reason as build).
+# ---------------------------------------------------------------------------------------------
+[tasks.test]
+dir = "{{config_root}}"
+description = "xcodebuild test -scheme ScreenGuard for the iOS Simulator DESTINATION"
+run = '''
+set -eu
+: "${DESTINATION:?DESTINATION is unset or empty — export DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2'}"
+exec xcodebuild test \
+  -scheme ScreenGuard \
+  -destination "$DESTINATION" \
+  -derivedDataPath .build/test-dd
+'''
+
+# ---------------------------------------------------------------------------------------------
+# demo:build — build the example app from its generated project.
+#
+# "depends = [generate]" because the .xcodeproj is a generated artifact: this makes the task work
+# on a fresh clone where the project has not been generated yet. The derived-data path matches
+# Scripts/verify_capture.sh, so "mise run demo:verify -- --skip-build" can reuse this build.
+# ---------------------------------------------------------------------------------------------
+[tasks."demo:build"]
+dir = "{{config_root}}"
+description = "Build the ScreenGuardDemo example app from its generated xcodeproj"
+depends = ["generate"]
+run = '''
+set -eu
+: "${DESTINATION:?DESTINATION is unset or empty — export DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2'}"
+exec xcodebuild build \
+  -project Examples/ScreenGuardDemo/ScreenGuardDemo.xcodeproj \
+  -scheme ScreenGuardDemo \
+  -destination "$DESTINATION" \
+  -derivedDataPath .build/demo-dd
+'''
+
+# ---------------------------------------------------------------------------------------------
+# demo:verify — the headline one-command verification.
+#
+# Scripts/verify_capture.sh builds the demo, boots a Simulator, launches the app and prints an
+# explicit PASS / FAIL verdict per capability (exit 0 = all Simulator-checkable assertions passed).
+# It takes its own "--device NAME" / "--runtime VERSION" flags, defaulting to iPhone 17 Pro /
+# 26.2 — that is why DESTINATION does not apply here. It generates the project itself, so this
+# only depends on "generate" for the fresh-clone case.
+#
+# Extra arguments are appended to the last line of the script, so the script's own flags reach it:
+#     mise run demo:verify -- --skip-build
+#     mise run demo:verify -- --device "iPhone 17 Pro" --runtime 26.2
+# ---------------------------------------------------------------------------------------------
+[tasks."demo:verify"]
+dir = "{{config_root}}"
+description = "Run Scripts/verify_capture.sh — build, launch on Simulator, PASS/FAIL per capability"
+depends = ["generate"]
+run = '''
+set -eu
+exec Scripts/verify_capture.sh
+'''
+
+# ---------------------------------------------------------------------------------------------
+# shellcheck — static analysis of the repository's shell scripts.
+#
+# "--severity=error" keeps the gate to real defects rather than style preferences, and the scope
+# is Scripts/ (the scripts users are told to run). shellcheck is only invoked with the pinned
+# 0.11.0, so new checks cannot appear from a version bump.
+# ---------------------------------------------------------------------------------------------
+[tasks.shellcheck]
+dir = "{{config_root}}"
+description = "shellcheck --severity=error over Scripts/"
+run = '''
+set -eu
+shellcheck --severity=error Scripts/*.sh
+'''
+
+# ---------------------------------------------------------------------------------------------
+# ci:local — the exact local equivalent of the CI "validate" job, in order, failing loudly.
+#
+# The order and the step list below are the contract the CI workflow must mirror — the
+# non-mutating checks first (a style failure must not wait for a five-minute build), then the
+# builds, then the test action:
+#
+#     generate -> format:check -> lint -> shellcheck -> build -> test -> demo:build
+#
+# "set -eu" plus the per-step loop means the first failing step aborts the run with its own exit
+# code — no step is skipped and none is swallowed. lint:demo runs last and cannot fail the chain:
+# it is the advisory debt tracker, by design.
+#
+# Not included: "demo:verify" boots a Simulator and runs the app (its own, heavier job) and
+# actionlint lints the workflow YAML itself ("mise exec -- actionlint").
+# ---------------------------------------------------------------------------------------------
+[tasks."ci:local"]
+dir = "{{config_root}}"
+description = "The exact local equivalent of the CI validate job, in order, failing loudly"
+run = '''
+set -eu
+echo "== ci:local — local equivalent of the CI 'validate' job =="
+for step in generate format:check lint shellcheck build test demo:build; do
+  echo ""
+  echo "===== mise run $step ====="
+  mise run "$step"
+done
+echo ""
+echo "===== mise run lint:demo (advisory, never gates) ====="
+mise run "lint:demo" || true
+echo ""
+echo "== ci:local: every blocking step passed =="
+'''
