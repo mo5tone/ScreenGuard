@@ -1,0 +1,15 @@
+# Line-ending normalisation for tracked text files.
+* text=auto
+
+# ---------------------------------------------------------------------------------------------
+# PNG evidence.
+#
+# These files are measured pixels, not source. Marking them binary stops git from diffing or
+# merging them as text (a PNG diff is never readable and a text merge corrupts the file).
+# ---------------------------------------------------------------------------------------------
+Research/Artifacts/**/*.png binary -diff
+docs/**/*.png binary -diff
+
+# The capture-matrix output is measured evidence. Flagging it as generated keeps GitHub from
+# counting it as source in the repository's language statistics.
+Research/Artifacts/** linguist-generated=true

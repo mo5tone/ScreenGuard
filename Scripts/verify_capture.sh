@@ -472,24 +472,37 @@ echo "  private API : opt-in $( [[ "$PRIVATE_OPT_IN" == "1" ]] && echo GRANTED |
 
 section "1. Build — the example consumes ScreenGuard as a local package dependency"
 
-# The generated Xcode project is not guaranteed to be present after a clone: this repository's root
-# `.gitignore` carries a `*.xcodeproj` rule, so a fresh checkout gets
-# `Examples/ScreenGuardDemo/project.yml` and nothing else. Regenerating it here keeps the
-# "clone, run one command" promise honest instead of failing with "project not found". XcodeGen is
-# needed only in this case, and only for the example app.
+# The generated Xcode project is never tracked: this repository's root `.gitignore` carries a
+# `*.xcodeproj` rule, so a fresh checkout gets `Examples/ScreenGuardDemo/project.yml` and nothing
+# else. Regenerating it here keeps the "clone, run one command" promise honest instead of failing
+# with "project not found". XcodeGen is needed only in this case, and only for the example app.
 if [[ ! -d "$PROJECT" ]]; then
-    if command -v xcodegen >/dev/null 2>&1; then
+    # Prefer the mise-managed XcodeGen: it is the pinned version, and it works on a machine with no
+    # global install because `mise exec` resolves the tool from the repository's mise.toml. The
+    # preference is probed, not assumed: on a checkout whose mise config is not trusted yet, or
+    # whose pinned XcodeGen has not been installed, a plain PATH install is used instead of failing
+    # a run that would otherwise work.
+    XCODEGEN=()
+    if command -v mise >/dev/null 2>&1 \
+        && ( cd "$(dirname "$PROJECT")" && mise exec -- xcodegen --version ) >/dev/null 2>&1; then
+        XCODEGEN=(mise exec -- xcodegen)
+    elif command -v xcodegen >/dev/null 2>&1; then
+        XCODEGEN=(xcodegen)
+    fi
+
+    if [[ ${#XCODEGEN[@]} -gt 0 ]]; then
         echo "  $PROJECT is missing (it is gitignored) — generating it from project.yml..."
-        if ( cd "$(dirname "$PROJECT")" && xcodegen generate ) > "$ARTIFACTS/xcodegen.log" 2>&1; then
-            record PASS "generated the missing Xcode project from project.yml" "xcodegen"
+        if ( cd "$(dirname "$PROJECT")" && "${XCODEGEN[@]}" generate ) > "$ARTIFACTS/xcodegen.log" 2>&1; then
+            record PASS "generated the missing Xcode project from project.yml" "${XCODEGEN[*]}"
         else
             record FAIL "generated the missing Xcode project from project.yml" "see $ARTIFACTS/xcodegen.log"
+            echo "  run 'mise install' at the repository root if XcodeGen is not installed yet"
             echo
             echo "  RESULT: FAILED (project generation)"
             exit 1
         fi
     else
-        die "$PROJECT is missing and xcodegen is not installed. Install XcodeGen (brew install xcodegen) and run 'xcodegen generate' inside Examples/ScreenGuardDemo."
+        die "$PROJECT is missing and no XcodeGen is available. Run 'mise install' at the repository root — it installs the pinned XcodeGen from mise.toml — then re-run this script."
     fi
 fi
 

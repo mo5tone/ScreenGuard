@@ -7,38 +7,37 @@ build
 Derived/
 *.xcresult
 
+# Compiled Python bytecode. Written next to the research scripts whenever one of them is imported,
+# and tagged with the local interpreter version, so it is machine-specific by construction.
+__pycache__/
+*.pyc
+
 # ---------------------------------------------------------------------------------------------
-# Generated Xcode projects.
+# Generated Xcode projects — NEVER tracked.
 #
-# RULE: a generated project is committed ONLY where it sits on the documented USER path.
+# A generated project is not source. The source of truth is the XcodeGen spec that sits next to it:
 #
-#   Examples/  -> COMMITTED. `Scripts/verify_capture.sh` is the documented one-command
-#                 verification, and its behaviour when the project is absent is: regenerate if
-#                 `xcodegen` is on PATH, otherwise `die` with "Install XcodeGen (brew install
-#                 xcodegen)". Requiring a separate install before the headline command works
-#                 would contradict the drop-in promise, so the project ships.
-#   Research/  -> IGNORED. That harness is a maintainer tool; its README documents the one-line
-#                 `xcodegen generate`.
+#   Examples/ScreenGuardDemo/project.yml   -> Examples/ScreenGuardDemo/ScreenGuardDemo.xcodeproj
+#   Research/CaptureMatrix/project.yml     -> Research/CaptureMatrix/CaptureMatrix.xcodeproj
 #
-# The drift risk that comes with committing generated output is handled by CI (regenerate and
-# require an empty diff), not by withholding the file.
+# `mise run generate` rebuilds both from those specs with the mise-pinned XcodeGen, and
+# `Scripts/verify_capture.sh` — the documented one-command verification — regenerates the demo
+# project from project.yml automatically when it is missing, so a fresh clone needs neither a
+# committed project nor a separate XcodeGen install. Committing the bundle would only let it drift
+# away from the spec it was generated from.
 #
-# Note the negations are load-bearing and must stay: `*.xcworkspace` also matches
-# `ScreenGuardDemo.xcodeproj/project.xcworkspace`, which is part of the .xcodeproj bundle and is
-# required for Xcode to open the project at all.
+# There is deliberately no `!Examples/**/*.xcodeproj`-style negation: every .xcodeproj and
+# .xcworkspace in this tree is generated, including `<project>.xcodeproj/project.xcworkspace`,
+# which is part of the bundle and is regenerated with it. The shared scheme that
+# `xcodebuild -scheme ScreenGuardDemo` requires is declared under `scheme:` in
+# Examples/ScreenGuardDemo/project.yml and is generated with the project.
 # ---------------------------------------------------------------------------------------------
 *.xcodeproj
 *.xcworkspace
-!Examples/**/*.xcodeproj
-!Examples/**/*.xcworkspace
 
-# Per-user Xcode state, written whenever the project is opened or built. Machine-specific, churns
-# constantly, and means nothing to anyone else.
-#
-# Deliberately NOT ignored: `<project>.xcodeproj/xcshareddata/xcschemes/*.xcscheme`. Those are
-# shared, and they are what makes `xcodebuild -scheme ScreenGuardDemo` work on a fresh clone
-# without opening Xcode first so it auto-creates a user scheme — which the documented one-command
-# verification depends on. Ignoring xcuserdata/ does not affect them.
+# Per-user Xcode state, written whenever a project is opened or built. Machine-specific, churns
+# constantly, and means nothing to anyone else. It lives inside the generated bundle, so these
+# rules only matter for a bundle that is already on disk.
 xcuserdata/
 *.xcuserstate
 *.xcuserdatad
