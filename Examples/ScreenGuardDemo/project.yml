@@ -84,12 +84,6 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.9"
-        # No signing identity is needed to build for a Simulator, and requiring one would make the
-        # documented one-command verify fail on a machine without a developer certificate.
-        # A physical-device run overrides these on the xcodebuild command line
-        # (Scripts/verify_capture.sh --print-device-command prints the exact command).
-        CODE_SIGNING_ALLOWED: NO
-        CODE_SIGNING_REQUIRED: NO
 
     # An EXPLICIT scheme, and it is load-bearing rather than cosmetic.
     #
