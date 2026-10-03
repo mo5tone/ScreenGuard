@@ -32,6 +32,17 @@ Derived/
 !Examples/**/*.xcodeproj
 !Examples/**/*.xcworkspace
 
+# Per-user Xcode state, written whenever the project is opened or built. Machine-specific, churns
+# constantly, and means nothing to anyone else.
+#
+# Deliberately NOT ignored: `<project>.xcodeproj/xcshareddata/xcschemes/*.xcscheme`. Those are
+# shared, and they are what makes `xcodebuild -scheme ScreenGuardDemo` work on a fresh clone
+# without opening Xcode first so it auto-creates a user scheme — which the documented one-command
+# verification depends on. Ignoring xcuserdata/ does not affect them.
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+
 # ---------------------------------------------------------------------------------------------
 # AgentTeams runtime state.
 #
