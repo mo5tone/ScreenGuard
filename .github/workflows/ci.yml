@@ -1,0 +1,253 @@
+# =============================================================================================
+# ScreenGuard — CI: validate every pull request and every push to `main`.
+#
+# WHAT EACH JOB PROVES
+#   pr-title        the pull-request title is a Conventional Commit, so the history that the
+#                   changelog/release notes are generated from stays machine-readable. Required
+#                   status check on `main` — see Scripts/ci/branch-protection.sh.
+#   quality         the fast, non-mutating gates: SwiftFormat --lint, SwiftLint --strict,
+#                   shellcheck over Scripts/, shellcheck over Scripts/ci/, actionlint over
+#                   .github/workflows. Separated from the build so a formatting failure is
+#                   reported in under a minute instead of after a five-minute build.
+#   build-and-test  the iOS-only package builds and its test suite runs green on a Simulator
+#                   destination, the demo app builds, the Xcode projects are proven to be
+#                   generated-and-untracked artifacts, and the pinned toolchain is recorded.
+#
+# HOW THIS RELATES TO `mise run ci:local`
+#   ci:local runs the same blocking sequence in the same order:
+#       generate -> format:check -> lint -> shellcheck -> build -> test -> demo:build
+#   and then the advisory lint:demo. This workflow adds exactly three things ci:local does not
+#   have, and no gate is relaxed relative to it:
+#     * shellcheck over Scripts/ci/ (the frozen `mise run shellcheck` glob is Scripts/*.sh only)
+#     * actionlint over .github/workflows
+#     * the pull-request-title check, which is meaningless outside a pull request
+#   `mise run demo:verify` is deliberately NOT here: it boots a Simulator and drives the app,
+#   which is a nightly concern, not a per-pull-request gate.
+#
+# THERE IS NO FALLBACK AND NO BEST-EFFORT GATE
+#   No step is `continue-on-error`, no gate is "advisory" except the one the toolchain itself
+#   defines as advisory (`mise run lint:demo`, which exits 0 by design and says so), and the
+#   Simulator destination is checked before the build and FAILS LOUDLY if it does not exist rather
+#   than silently resolving to a different runtime.
+#
+# NO VERSION IS PUBLISHED BY THIS WORKFLOW
+#   Versioning is deferred: the repository has never been tagged. This workflow creates no tag, no
+#   release and no GitHub Release, and no step implies that a version exists.
+#
+# WHY THE RUNNER'S XCODE IS PRINTED, NOT ASSUMED — a known, named risk
+#   This file targets `macos-26`, whose default Xcode is 26.6 with the iOS 26.2 SDK; the project is
+#   developed on a newer Xcode (27.0 / iPhoneSimulator27.0.sdk). A source that compiles cleanly on
+#   one can still produce diagnostics on the other, so every run records the Xcode, SDK, Simulator
+#   runtimes and the mise-pinned tool versions it actually used (see Scripts/ci/print-toolchain.sh,
+#   whose output also lands in the job summary). `mise run ci:local` passing on a developer machine
+#   is NOT evidence that this workflow is green on the runner's SDK; only a run of this workflow is.
+# =============================================================================================
+
+name: CI
+
+on:
+  pull_request:
+    # `edited` matters: a pull request can be retitled after it was checked, and the title is the
+    # thing under test. Without it, a retitle would leave the previous, now-stale result in place.
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+# Least privilege, declared here and repeated per job. Nothing in this workflow writes to the
+# repository, so no job holds more than read access to the checked-out contents.
+permissions:
+  contents: read
+
+# A newer run on the same ref supersedes an older one: a push while a pull request is being
+# validated (or a force-push) must not queue a second full build-and-test behind the first.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The documented Simulator destination. Override it per repository with the `DESTINATION` Actions
+  # variable (Settings -> Secrets and variables -> Actions -> Variables) — e.g. to track a runtime
+  # the runner image installs later. There is no implicit fallback: Scripts/ci/check-destination.sh
+  # fails the job, listing every available destination, before the build starts.
+  DESTINATION: ${{ vars.DESTINATION || 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' }}
+
+jobs:
+  # -------------------------------------------------------------------------------------------
+  # The pull-request title. Required status check on `main` (Scripts/ci/branch-protection.sh), so
+  # a non-conforming title cannot be merged — that is what keeps the generated changelog readable.
+  # -------------------------------------------------------------------------------------------
+  pr-title:
+    name: pr-title
+    if: github.event_name == 'pull_request'
+    runs-on: macos-26
+    timeout-minutes: 10
+    permissions:
+      contents: read   # only to check out Scripts/ci/check-pr-title.sh
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The negative control: this proves the gate still REJECTS malformed titles (and that its
+      # type set still matches the one CONTRIBUTING.md documents) instead of accepting everything.
+      - name: Prove the gate rejects malformed titles
+        run: Scripts/ci/check-pr-title.sh --self-test
+
+      - name: Enforce Conventional Commits on the pull-request title
+        env:
+          # Passed through the environment, never interpolated into the script: a title is
+          # attacker-controlled text in a fork pull request.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: Scripts/ci/check-pr-title.sh "$PR_TITLE"
+
+  # -------------------------------------------------------------------------------------------
+  # Fast gates. No build, no Simulator: this job is expected to finish in well under a minute, so
+  # a formatting or lint failure is reported long before the build finishes.
+  # -------------------------------------------------------------------------------------------
+  quality:
+    name: quality
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the mise-pinned toolchain from .mise.toml
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          # Pinned to the mise release this repository's toolchain was verified with. Left unpinned,
+          # mise-action would float to whatever release is newest-but-24h-old on each run.
+          version: 2026.9.6
+          install: true
+          cache: true
+
+      # A GitHub runner starts with an untrusted mise config. `mise run` happens to auto-trust the
+      # active config in normal mode, so running a task would NOT prove trust was established; the
+      # discovery command `mise tasks` does fail on an untrusted config, which is why it is the
+      # check here. It also lists the frozen task names this workflow calls by name.
+      - name: Trust the repository mise config
+        run: |
+          mise trust
+          tasks=$(mise tasks)
+          printf '%s\n' "$tasks"
+          for task in generate format:check lint shellcheck build test demo:build lint:demo ci:local; do
+            if ! printf '%s\n' "$tasks" | grep -q "^${task} "; then
+              echo "FAIL: task '${task}' is missing from .mise.toml"
+              exit 1
+            fi
+          done
+
+      # Records the exact Xcode, SDK and tool versions this run used, and fails if a tool pinned in
+      # .mise.toml is missing or is being served by a global (Homebrew) install instead of mise.
+      - name: Record the pinned toolchain
+        run: Scripts/ci/print-toolchain.sh
+
+      - name: Check formatting — SwiftFormat --lint (writes nothing)
+        run: mise run format:check
+
+      - name: Lint Sources and Tests — SwiftLint --strict
+        run: mise run lint
+
+      - name: Static analysis of the shell scripts — shellcheck --severity=error
+        run: mise run shellcheck
+
+      # The frozen `mise run shellcheck` task globs Scripts/*.sh, which does not reach Scripts/ci/.
+      # The CI helper scripts are gated explicitly here rather than left to the pull-request
+      # reviewer's eye.
+      - name: Static analysis of the CI helper scripts — shellcheck --severity=error
+        run: shellcheck --severity=error Scripts/ci/*.sh
+
+      # No path argument on purpose: actionlint discovers .github/workflows itself and lints every
+      # workflow file in it (it rejects a directory as an argument), so workflows added later are
+      # covered without this step changing.
+      - name: Lint the workflow YAML — actionlint over .github/workflows
+        run: mise exec -- actionlint
+
+  # -------------------------------------------------------------------------------------------
+  # The build and test job. Everything here runs through the pinned tasks, so CI and
+  # `mise run ci:local` execute the same commands with the same flags.
+  # -------------------------------------------------------------------------------------------
+  build-and-test:
+    name: build-and-test
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the mise-pinned toolchain from .mise.toml
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.6
+          install: true
+          cache: true
+
+      - name: Trust the repository mise config
+        run: |
+          mise trust
+          tasks=$(mise tasks)
+          printf '%s\n' "$tasks"
+          for task in generate format:check lint shellcheck build test demo:build lint:demo ci:local; do
+            if ! printf '%s\n' "$tasks" | grep -q "^${task} "; then
+              echo "FAIL: task '${task}' is missing from .mise.toml"
+              exit 1
+            fi
+          done
+
+      # The selected Xcode, the Simulator SDK, the installed runtimes and the pinned tool versions.
+      # Recorded in the job summary as well, so a later diagnostic can be attributed to an exact
+      # toolchain rather than to "CI".
+      - name: Print the selected Xcode version, SDK and pinned tools
+        run: Scripts/ci/print-toolchain.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Fail before a fifteen-minute build if the destination does not exist on this runner image:
+      # printing the reason and every available destination, and never falling back silently.
+      - name: Resolve the Simulator destination (no silent fallback)
+        run: Scripts/ci/check-destination.sh "$DESTINATION"
+
+      # Regenerates both projects from their project.yml specs and proves the result: byte-identical
+      # on a second run, nothing tracked, ignored by git, and no tracked file modified.
+      - name: Generate the Xcode projects and prove they stay untracked
+        run: Scripts/ci/verify-generated-projects.sh
+
+      - name: Build the package — xcodebuild, iOS Simulator
+        run: mise run build
+
+      # Fails on any test failure: xcodebuild exits non-zero and the step follows it. No test COUNT
+      # is asserted anywhere — the suite is expected to grow, and a hardcoded number would turn an
+      # added test into a red build. Skipped tests are legitimate here: several capabilities in this
+      # package are measurable on a device only (docs/TOOLING.md §7), and their skips carry reasons.
+      - name: Run the test suite — xcodebuild test, iOS Simulator
+        run: mise run test
+
+      - name: Build the demo app from its generated project
+        run: mise run demo:build
+
+      # WHY THERE IS NO TRAIT-ENABLED TEST STEP, AND WHAT COVERS THE PRIVATE PATH INSTEAD (F-R1-8).
+      # Six tests skip in this configuration with PRIVATEAPI-REQUIRED, so this job COMPILES the
+      # private-API code but never EXECUTES it. A required step that runs the trait-enabled test
+      # suite is not achievable on the pinned toolchain, and that was measured rather than assumed:
+      #   * `xcodebuild -help` mentions "trait" zero times, and
+      #     `xcodebuild test ... -traits PrivateAPI` exits 64 with
+      #     `xcodebuild: error: invalid option '-traits'`.
+      #   * `swift test --traits PrivateAPI` exits 1 with
+      #     `unable to resolve module dependency: 'UIKit'` — the documented iOS-only limitation
+      #     (docs/TOOLING.md §1) — so SwiftPM cannot run this suite at all.
+      # The closest achievable gates, strongest first:
+      #   1. the step above — `mise run demo:build` compiles the trait-gated code (the demo enables
+      #      the trait), which is what caught the reformat's self-assignment defect in
+      #      ScreenGuardPrivateSecureLayer.swift, a defect the package build and the whole test suite
+      #      both missed;
+      #   2. .github/workflows/verification.yml (nightly, on demand) — Scripts/verify_capture.sh
+      #      executes the private path end to end on a Simulator and grades its pixels.
+      # Neither executes the trait-enabled UNIT tests; the README CI section states that gap plainly.
+      # Informational by design, and the only non-blocking report in this workflow: `lint:demo`
+      # tracks deferred SwiftLint debt in the demo and research code and exits 0 on purpose (see
+      # .mise.toml). The blocking style gate is `mise run lint` above, which runs in the quality
+      # job; a missing or broken SwiftLint still fails the run there. No continue-on-error is used
+      # here — the task itself is defined as advisory, and that is stated in its description.
+      - name: Report demo and research lint findings (informational)
+        run: mise run lint:demo
