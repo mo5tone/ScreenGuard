@@ -1,0 +1,92 @@
+# ScreenGuardDemo — xcodegen spec for the example app.
+#
+# Regenerate the .xcodeproj with:
+#
+#     cd Examples/ScreenGuardDemo && xcodegen generate
+#
+# The app consumes ScreenGuard as a LOCAL package dependency by RELATIVE PATH (`../..`), which is
+# what makes this example a real drop-in-consumption proof rather than a same-module smoke test.
+# Nothing in the package is edited: the package is read-only source material for this target
+# (docs/api-contract.md §11).
+#
+# Build/verify (from the repo root) — `swift build` does NOT work for an iOS-only package, see
+# docs/TOOLING.md §1:
+#
+#     xcodebuild build -project Examples/ScreenGuardDemo/ScreenGuardDemo.xcodeproj \
+#       -scheme ScreenGuardDemo \
+#       -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+#       -derivedDataPath .build/demo-dd
+
+name: ScreenGuardDemo
+
+options:
+  bundleIdPrefix: com.screenguard
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  groupSortPosition: top
+
+packages:
+  # RELATIVE-PATH local package dependency. This is the acceptance-critical line: the example
+  # consumes the package exactly the way an outside app would, through a package reference rather
+  # than by compiling the sources into the app target.
+  #
+  # TRAITS — the consumer-side opt-in of docs/api-contract.md §9.4 / §13 A1, written the way a real
+  # consumer writes it:
+  #
+  #     .package(path: "../..", traits: ["PrivateAPI"])
+  #
+  # WHY THIS EXAMPLE ENABLES IT
+  #   The opt-in private secure-layer swap is the ONLY mechanism measured to keep arbitrary content
+  #   out of the app-side capture path while still painting it on the display
+  #   (docs/evidence/capability-matrix.md §3 rows 4 and 6). The public preventsCapture path cannot be
+  #   measured on Simulator at all — with `preventsCapture = true` the layer paints nothing, on screen
+  #   included (docs/TOOLING.md §7.1) — so without this trait the one-command verification could not
+  #   demonstrate a no-leak pixel outcome anywhere on a Simulator.
+  #
+  #   It is also the end-to-end proof of §9.4: the trait is consumer-actionable from one line of the
+  #   CONSUMER's manifest, with no fork and no change to the package. `ScreenGuard.PrivateAPI.isCompiledIn`
+  #   reports at runtime whether it took effect, and `Scripts/verify_capture.sh` grades that value.
+  #
+  # ⚠️ WHAT THIS COSTS. The private UIKit class-name string is compiled into THIS DEMO's binary. That
+  #   is inherent to the trait — App Review exposure is a compile-time property (docs/api-contract.md
+  #   §9.3) — and is exactly why the trait is OFF by default for real consumers. Nothing here changes
+  #   the package's default posture: delete the `traits:` line and the private code is not compiled.
+  ScreenGuard:
+    path: ../..
+    traits: ["PrivateAPI"]
+
+targets:
+  ScreenGuardDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    dependencies:
+      - package: ScreenGuard
+        product: ScreenGuard
+    info:
+      path: Support/Info.plist
+      properties:
+        CFBundleDisplayName: ScreenGuard Demo
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.screenguard.demo
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+        # No signing identity is needed to build for a Simulator, and requiring one would make the
+        # documented one-command verify fail on a machine without a developer certificate.
+        # A physical-device run overrides these on the xcodebuild command line
+        # (Scripts/verify_capture.sh --print-device-command prints the exact command).
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
