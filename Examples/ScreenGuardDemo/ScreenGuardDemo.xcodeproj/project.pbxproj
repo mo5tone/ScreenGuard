@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		19A9947E52469F617079E1E2 /* DemoCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801F3BB7188A6E711408873C /* DemoCapture.swift */; };
+		1B9B16FB755D46769C48D269 /* CapabilityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE032C36DF75D7FD98050C8 /* CapabilityCard.swift */; };
 		2EC23C0B4ABAAAC1AA2E2784 /* DemoConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B63807413759836D580689 /* DemoConfig.swift */; };
 		3A379E18434CD76C823555E3 /* DemoGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343E616723C88BEE3567164 /* DemoGeometry.swift */; };
 		413CFAA91FA2AFEEF1058561 /* DemoShieldRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84D0DCF2FCD5ACC2A4DCD8FA /* DemoShieldRepresentable.swift */; };
@@ -19,21 +21,28 @@
 		87755BB4070B05377C405A1C /* DemoDetectionProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 862A58001D0D009B53B4E232 /* DemoDetectionProbeView.swift */; };
 		87B0E8F64431E30AC8DD8D52 /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F9EAF14429C1FC917B2593 /* DemoApp.swift */; };
 		8F8DAF95E67E5EC984B53C56 /* DemoWatermarkProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1274109279FB758C8C8BED3D /* DemoWatermarkProbeView.swift */; };
+		9AC8D5CFB906973C22811257 /* DemoSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18159FDF3C876BAD40E393F6 /* DemoSettings.swift */; };
 		AB4385C69E4B479F4CBD315E /* DemoAppSwitcherProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237C25ED3E430523235F589D /* DemoAppSwitcherProbeView.swift */; };
 		B31A98F963C0A8BF39D35E4F /* DemoCapabilityProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F580BFEC5EECDD6D99D788 /* DemoCapabilityProbeView.swift */; };
 		B5E8A9CC99A6FD1EA1A5FBAA /* DemoNoLeakProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBFF4539B45C8C638C7586C /* DemoNoLeakProbeView.swift */; };
 		BDE06A0A75599205692435AE /* DemoCapabilityListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E106507871DFE0AC5E7644F1 /* DemoCapabilityListView.swift */; };
+		C7E071FC04803FA9868DD5CA /* DemoControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC836C96AF302DB38AAC1842 /* DemoControllers.swift */; };
+		FBF8AF84C1F066123B011FFA /* DemoEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BCE653C84C7B0BB402D331 /* DemoEnvironment.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		04A8BC87C36B4416353C5CF1 /* DemoSwiftUIPrivateProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSwiftUIPrivateProbeView.swift; sourceTree = "<group>"; };
 		1274109279FB758C8C8BED3D /* DemoWatermarkProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWatermarkProbeView.swift; sourceTree = "<group>"; };
+		18159FDF3C876BAD40E393F6 /* DemoSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSettings.swift; sourceTree = "<group>"; };
 		1F23A2ED8791649379C203AD /* DemoEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoEvidence.swift; sourceTree = "<group>"; };
 		237C25ED3E430523235F589D /* DemoAppSwitcherProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAppSwitcherProbeView.swift; sourceTree = "<group>"; };
 		2F1629ADB15032FDA99E096E /* ScreenGuarantor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ScreenGuarantor; path = ../..; sourceTree = SOURCE_ROOT; };
 		3D3AE3918210E7216E4C8887 /* DemoSensitiveCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSensitiveCard.swift; sourceTree = "<group>"; };
+		40BCE653C84C7B0BB402D331 /* DemoEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoEnvironment.swift; sourceTree = "<group>"; };
 		476449656CE151B066D59313 /* DemoShieldContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoShieldContainer.swift; sourceTree = "<group>"; };
 		58B63807413759836D580689 /* DemoConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoConfig.swift; sourceTree = "<group>"; };
+		7DE032C36DF75D7FD98050C8 /* CapabilityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapabilityCard.swift; sourceTree = "<group>"; };
+		801F3BB7188A6E711408873C /* DemoCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCapture.swift; sourceTree = "<group>"; };
 		84D0DCF2FCD5ACC2A4DCD8FA /* DemoShieldRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoShieldRepresentable.swift; sourceTree = "<group>"; };
 		862A58001D0D009B53B4E232 /* DemoDetectionProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoDetectionProbeView.swift; sourceTree = "<group>"; };
 		A7F580BFEC5EECDD6D99D788 /* DemoCapabilityProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCapabilityProbeView.swift; sourceTree = "<group>"; };
@@ -42,6 +51,7 @@
 		C1F9EAF14429C1FC917B2593 /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
 		C42BF2191EFBED6A5EDB423C /* DemoRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoRootView.swift; sourceTree = "<group>"; };
 		CE7E38A140B33B495A8DBD41 /* ScreenGuardDemo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ScreenGuardDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC836C96AF302DB38AAC1842 /* DemoControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoControllers.swift; sourceTree = "<group>"; };
 		E106507871DFE0AC5E7644F1 /* DemoCapabilityListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCapabilityListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -80,10 +90,14 @@
 			isa = PBXGroup;
 			children = (
 				E106507871DFE0AC5E7644F1 /* DemoCapabilityListView.swift */,
+				801F3BB7188A6E711408873C /* DemoCapture.swift */,
 				58B63807413759836D580689 /* DemoConfig.swift */,
+				DC836C96AF302DB38AAC1842 /* DemoControllers.swift */,
+				40BCE653C84C7B0BB402D331 /* DemoEnvironment.swift */,
 				1F23A2ED8791649379C203AD /* DemoEvidence.swift */,
 				B343E616723C88BEE3567164 /* DemoGeometry.swift */,
 				3D3AE3918210E7216E4C8887 /* DemoSensitiveCard.swift */,
+				18159FDF3C876BAD40E393F6 /* DemoSettings.swift */,
 				476449656CE151B066D59313 /* DemoShieldContainer.swift */,
 			);
 			path = Support;
@@ -113,6 +127,7 @@
 		D4F95C81A858CE68D77A6DA2 /* Interactive */ = {
 			isa = PBXGroup;
 			children = (
+				7DE032C36DF75D7FD98050C8 /* CapabilityCard.swift */,
 				C42BF2191EFBED6A5EDB423C /* DemoRootView.swift */,
 				84D0DCF2FCD5ACC2A4DCD8FA /* DemoShieldRepresentable.swift */,
 			);
@@ -188,17 +203,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1B9B16FB755D46769C48D269 /* CapabilityCard.swift in Sources */,
 				87B0E8F64431E30AC8DD8D52 /* DemoApp.swift in Sources */,
 				AB4385C69E4B479F4CBD315E /* DemoAppSwitcherProbeView.swift in Sources */,
 				BDE06A0A75599205692435AE /* DemoCapabilityListView.swift in Sources */,
 				B31A98F963C0A8BF39D35E4F /* DemoCapabilityProbeView.swift in Sources */,
+				19A9947E52469F617079E1E2 /* DemoCapture.swift in Sources */,
 				2EC23C0B4ABAAAC1AA2E2784 /* DemoConfig.swift in Sources */,
+				C7E071FC04803FA9868DD5CA /* DemoControllers.swift in Sources */,
 				87755BB4070B05377C405A1C /* DemoDetectionProbeView.swift in Sources */,
+				FBF8AF84C1F066123B011FFA /* DemoEnvironment.swift in Sources */,
 				480FD3C65FE45F4CB698E3AD /* DemoEvidence.swift in Sources */,
 				3A379E18434CD76C823555E3 /* DemoGeometry.swift in Sources */,
 				B5E8A9CC99A6FD1EA1A5FBAA /* DemoNoLeakProbeView.swift in Sources */,
 				6A2D4B04FC2B3089E0C55838 /* DemoRootView.swift in Sources */,
 				6DEC04D885D076AC6D4FE92B /* DemoSensitiveCard.swift in Sources */,
+				9AC8D5CFB906973C22811257 /* DemoSettings.swift in Sources */,
 				4FC7A081B6732A7D1A33D8A9 /* DemoShieldContainer.swift in Sources */,
 				413CFAA91FA2AFEEF1058561 /* DemoShieldRepresentable.swift in Sources */,
 				7E9D248CCC05D6FFC5D29982 /* DemoSwiftUIPrivateProbeView.swift in Sources */,

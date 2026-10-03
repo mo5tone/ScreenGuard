@@ -90,3 +90,18 @@ targets:
         # (Scripts/verify_capture.sh --print-device-command prints the exact command).
         CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
+
+    # An EXPLICIT scheme, and it is load-bearing rather than cosmetic.
+    #
+    # Without it, `xcodegen generate` produces a project with NO shared scheme — and regenerating
+    # DELETES one that was committed, because the whole .xcodeproj is rewritten from this spec. The
+    # next `xcodebuild -scheme ScreenGuardDemo` then fails with:
+    #
+    #     The project named "ScreenGuardDemo" does not contain a scheme named "ScreenGuardDemo"
+    #
+    # which is precisely the failure a fresh clone hits, since the documented one-command
+    # verification runs that command by name. Declaring the scheme here makes it a generated,
+    # reproducible artifact instead of a hand-maintained file that the next regeneration destroys.
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
