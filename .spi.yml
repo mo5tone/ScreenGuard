@@ -1,0 +1,42 @@
+# =============================================================================================
+# .spi.yml — Swift Package Index manifest for ScreenGuard.
+#
+# WHAT THIS FILE DECIDES
+#   ScreenGuard is an iOS-only package: Package.swift declares platforms: [.iOS(.v15)] and every
+#   module imports UIKit. The Swift Package Index's default build for a package is a macOS SwiftPM
+#   build, which cannot compile UIKit at all, so the index would show a package that "does not
+#   build" for a reason that has nothing to do with this package's code. The builder config below
+#   declares the platform the package actually supports and the target whose documentation the
+#   index should host.
+#
+#   `scheme` is the package's own scheme. One library product means one scheme, named after the
+#   product (docs/TOOLING.md §1.1); "xcodebuild -list" is the check if the product list changes.
+#
+#   The documentation target is the single public target: consumers write `import ScreenGuard` and
+#   nothing else (docs/api-contract.md §1 rule 1). There is no second target to document — the
+#   private-API path is a trait inside it, not a separate module.
+#
+# VALIDATE IT
+#   https://swiftpackageindex.com/validate-spi-manifest
+#
+# DELIBERATELY ABSENT
+#   * external_links — every URL would have to assume the final owner/repo, and a wrong absolute URL
+#     in a public manifest is worse than no link. Add them once the published URL is settled.
+#   * swift_version — the manifest's swift_version selects a toolchain for the index's build; this
+#     package needs swift-tools-version 6.1 for package traits (Package.swift), so pinning a
+#     different toolchain here would break the build it is meant to configure.
+# =============================================================================================
+
+version: 1
+
+metadata:
+  # Matches the copyright line in LICENSE.
+  authors: "ScreenGuard contributors"
+
+builder:
+  configs:
+    - platform: ios
+      scheme: ScreenGuard
+      documentation_targets:
+        # First entry is the landing page of the hosted documentation.
+        - ScreenGuard

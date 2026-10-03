@@ -1,0 +1,190 @@
+# =============================================================================================
+# ScreenGuard — Nightly verification (LOW PRIORITY by design: this is not a pull-request gate).
+#
+# WHAT IT RUNS
+#   Scripts/verify_capture.sh — the repository's headline one-command verification. It builds the
+#   demo app, boots a Simulator, launches the demo, and prints an explicit verdict per capability:
+#
+#       [PASS   ] [FAIL   ] [DEVICE ] [SKIP   ] [FINDING]
+#
+#   It exits 1 when any Simulator-checkable assertion failed and 2 when the run could not be
+#   completed at all (build failure, no simulator, missing artifacts).
+#
+# WHAT THIS WORKFLOW WILL NOT DO
+#   * It never converts a FAIL into a pass. The run step propagates the script's own exit status, and
+#     an independent verdict step re-reads the log afterwards: "RESULT: FAILED" fails the job, and a
+#     log with NO verdict at all also fails the job — an inconclusive run is not a pass.
+#   * It does not hide what it cannot check. sim-use is NOT installable on a GitHub-hosted runner,
+#     and it is the only reliable way to background an app headlessly (docs/TOOLING.md section 2).
+#     Every check that needs it is reported by the script as SKIP or DEVICE, the job summary states
+#     that in plain words, and the artifact upload has `if-no-files-found: error` so a run that
+#     produced no evidence fails instead of passing quietly.
+#   * It never claims device-only results. Checks that require hardware are printed as DEVICE and
+#     are NOT validated by this run.
+#
+# SCHEDULE
+#   Nightly at 04:00 UTC, plus manual dispatch with an optional device/runtime override.
+# =============================================================================================
+
+name: Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Simulator device name"
+        required: false
+        default: "iPhone 17 Pro"
+        type: string
+      runtime:
+        description: "iOS runtime version, e.g. 26.2"
+        required: false
+        default: "26.2"
+        type: string
+  schedule:
+    # 04:00 UTC nightly. It verifies the head of main as it stands at that moment.
+    - cron: "0 4 * * *"
+
+# Least privilege: this workflow reads the repository and uploads an artifact. It writes nothing.
+permissions:
+  contents: read
+
+# One verification at a time: two simultaneous runs would fight over the same Simulator.
+concurrency:
+  group: verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify
+    runs-on: macos-26
+    # The run builds the demo, boots a Simulator and drives several probe pages; 90 minutes is a
+    # hang guard, not a budget.
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      DEVICE: ${{ inputs.device || 'iPhone 17 Pro' }}
+      RUNTIME: ${{ inputs.runtime || '26.2' }}
+      # Unique per run, and used both by the script (artifact directory) and by the upload step.
+      RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the mise-pinned toolchain from .mise.toml
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.6
+          install: true
+          cache: true
+
+      - name: Trust the repository mise config
+        run: |
+          mise trust
+          mise tasks >/dev/null
+
+      - name: Print the selected Xcode version, SDK and pinned tools
+        run: Scripts/ci/print-toolchain.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Fail in seconds, with the list of available destinations, if the requested simulator does
+      # not exist on this runner image — instead of half-way through a 20-minute run.
+      - name: Resolve the Simulator destination (no silent fallback)
+        run: Scripts/ci/check-destination.sh "platform=iOS Simulator,name=$DEVICE,OS=$RUNTIME"
+
+      # The verdicts go to verification.log AND to the console. The step's exit status is the
+      # script's own exit status (bash runs with -e and pipefail), so FAIL and "could not complete"
+      # both turn this step — and the job — red. Nothing is swallowed here.
+      - name: Run the capture verification on a Simulator
+        run: |
+          Scripts/verify_capture.sh --device "$DEVICE" --runtime "$RUNTIME" --run-id "$RUN_ID" 2>&1 \
+            | tee verification.log
+
+      # Reporting only. It runs even when the step above failed, because a failed run is exactly the
+      # run whose evidence must be published.
+      - name: Publish the PASS/FAIL/DEVICE/SKIP/FINDING summary
+        if: always()
+        run: |
+          log=verification.log
+          if [ ! -f "$log" ]; then
+            echo "## Capture verification — no log" >> "$GITHUB_STEP_SUMMARY"
+            echo "The verification step produced no log at all, so there is no evidence to publish." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "## Capture verification — $DEVICE / iOS $RUNTIME"
+            echo
+            printf 'Command: Scripts/verify_capture.sh --device %s --runtime %s --run-id %s\n' "$DEVICE" "$RUNTIME" "$RUN_ID"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # The one thing a reader must not have to infer: why some checks say SKIP/DEVICE here.
+          if grep -q 'sim-use MISSING' "$log"; then
+            {
+              echo "> **sim-use is MISSING on this runner.** sim-use is not installable on a"
+              echo "> GitHub-hosted runner and it is the only reliable way to background an app"
+              echo "> headlessly, so every check that needs it reported SKIP or DEVICE."
+              echo "> Those checks are **NOT validated by this run** — the script prints the reason"
+              echo "> next to each one, and nothing was converted into a pass."
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          awk '
+            /^[[:space:]]*\[(PASS|FAIL|DEVICE|SKIP|FINDING)/ {
+              print
+              count++
+            }
+            END {
+              if (count == 0) print "    (no per-check verdict lines were printed)"
+            }
+          ' "$log" >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo
+            echo "### Result"
+            echo
+            awk '/RESULT: (PASSED|FAILED)/ { print }' "$log"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The independent verdict check. It re-reads the log rather than trusting the step above:
+      # "FAILED" fails, and a run that never reached a verdict ALSO fails — an inconclusive run must
+      # not look like a green one.
+      - name: Fail unless the run reached a PASSED verdict
+        if: always()
+        run: |
+          log=verification.log
+          verdict=1
+
+          if [ ! -f "$log" ]; then
+            echo "FAIL: no verification log was produced, so no verdict can be trusted."
+            exit 1
+          fi
+          if grep -q 'RESULT: FAILED' "$log"; then
+            echo "FAIL: the verification run reported at least one failed assertion."
+            verdict=0
+          fi
+          if ! grep -q 'RESULT: PASSED' "$log"; then
+            echo "FAIL: the run never reached 'RESULT: PASSED' — it failed, or it could not complete."
+            echo "      An inconclusive run is not a pass; the log is attached to this run."
+            verdict=0
+          fi
+          if [ "$verdict" -ne 1 ]; then
+            exit 1
+          fi
+          echo "verdict: PASSED — every Simulator-checkable assertion passed."
+          echo "Device-required checks are reported as DEVICE/SKIP by the script and are NOT validated by this run."
+
+      # Evidence first, verdict second: even a red run uploads everything it produced.
+      - name: Upload the verification artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verify-capture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .build/verify-capture/${{ env.RUN_ID }}/**
+            verification.log
+          # A run with no evidence must fail: an empty artifact is not a passed verification.
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,39 @@
+# =============================================================================================
+# .github/dependabot.yml — dependency updates.
+#
+# SCOPE: GitHub Actions only. The workflows pin every action to a full commit SHA with a version
+# comment (see ci.yml), which is the right posture but also means the pins rot silently: nothing
+# tells us when a pinned action gets a security fix. Dependabot is the thing that does.
+#
+# There is deliberately NO Swift/Package.swift ecosystem entry: this package has ZERO dependencies
+# (Package.swift declares no `dependencies:` at all), so there is nothing for that ecosystem to
+# update. An entry there would be a permanent no-op that implies a supply chain that does not exist.
+#
+# THE TITLE MATTERS — DO NOT REMOVE commit-message
+#   Pull requests are squash-merged and the pull-request TITLE becomes the commit subject on main,
+#   which .github/workflows/ci.yml enforces as a Conventional Commit (Scripts/ci/check-pr-title.sh).
+#   Dependabot's default title is "Bump actions/checkout from 4 to 5", which that gate REJECTS — so
+#   without `commit-message.prefix: "chore(deps)"` every Dependabot pull request would be
+#   permanently red and this update channel would be dead on arrival.
+# =============================================================================================
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Patch/minor/patch-action bumps arrive together instead of as six pull requests a week.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      # Conventional Commit type + scope, exactly what the pr-title gate accepts.
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    # A pull request that loses a rebase race is retried by Dependabot itself.
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5

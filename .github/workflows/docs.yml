@@ -1,0 +1,156 @@
+# =============================================================================================
+# ScreenGuard — Documentation (CD, and the part that actually runs today).
+#
+# WHAT IT DOES
+#   On every push to main it builds the DocC archive for the package with `xcodebuild docbuild`,
+#   renders it as a static site with `xcrun docc process-archive transform-for-static-hosting`, and
+#   publishes that site to GitHub Pages.
+#
+# NO swift-docc-plugin
+#   The toolchain path is not a workaround, it is the supported path: `xcodebuild docbuild` ships
+#   with Xcode and builds documentation for every target in the package, and `xcrun docc` renders it
+#   for static hosting. Adding swift-docc-plugin would put a BUILD-TIME plugin into a package the
+#   README advertises as dependency-free, so Package.swift is deliberately untouched.
+#
+# WHY THE ROOT index.html IS REWRITTEN
+#   With --hosting-base-path <repo>, DocC rewrites the documentation pages to
+#   `baseUrl = "/<repo>/"` (correct for a project site served at https://<owner>.github.io/<repo>/)
+#   but leaves the archive's ROOT index.html pointing at "/" — its asset URLs would resolve one
+#   level above the site and 404. The step below replaces that one file with a relative redirect to
+#   the module's documentation page, which works under any base path. Everything else is DocC's
+#   output, untouched, and the step then asserts that the redirect target exists and that the module
+#   page carries the expected base path — so a wrong base path fails the deploy instead of shipping
+#   a site with broken assets.
+#
+# ONE-TIME REPOSITORY SETTING
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions". Until that is set, the
+#   deploy job fails loudly (`actions/deploy-pages` cannot create the deployment) rather than
+#   publishing a stale site.
+# =============================================================================================
+
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  # Manual re-deploy (e.g. after the Pages source setting is switched on).
+  workflow_dispatch:
+
+# Least privilege; the deploy job below adds exactly the two scopes Pages needs.
+permissions:
+  contents: read
+
+# A newer push to main supersedes an older documentation build.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Recorded so a documentation failure can be attributed to a specific SDK — the runner's Xcode
+      # and a developer's are not necessarily the same (docs/TOOLING.md section 1).
+      - name: Record the selected Xcode and Simulator SDK
+        run: |
+          xcodebuild -version
+          printf 'developer dir      : %s\n' "$(xcode-select -p)"
+          printf 'iphonesimulator SDK: %s\n' "$(xcrun --sdk iphonesimulator --show-sdk-version)"
+
+      - name: Build the DocC archive with xcodebuild
+        run: |
+          xcodebuild docbuild \
+            -scheme ScreenGuard \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath .build/docs-dd
+          printf '\n== BUILD DOCUMENTATION SUCCEEDED ==\n'
+
+      # `docbuild` reports success even in configurations that emit no archive, so its presence is
+      # asserted instead of assumed.
+      - name: Locate the DocC archive (fail loudly if none was produced)
+        run: |
+          archive=$(find .build/docs-dd -name '*.doccarchive' -type d | head -1)
+          if [ -z "$archive" ]; then
+            echo "FAIL: xcodebuild docbuild produced no .doccarchive under .build/docs-dd."
+            find .build/docs-dd -maxdepth 4 -type d | head -20
+            exit 1
+          fi
+          echo "archive=$archive" >> "$GITHUB_ENV"
+          echo "built $archive"
+
+      - name: Render the static site for GitHub Pages
+        run: |
+          base="${GITHUB_REPOSITORY#*/}"
+          module=screenguard
+          site=_site
+
+          xcrun docc process-archive transform-for-static-hosting "$archive" \
+            --output-path "$site" \
+            --hosting-base-path "$base"
+
+          # The archive's root index is not rewritten for the base path (see the header). Replace it
+          # with a relative redirect so the landing page works at https://<owner>.github.io/<base>/.
+          cat > "$site/index.html" <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>ScreenGuard documentation</title>
+          <meta http-equiv="refresh" content="0; url=documentation/screenguard/">
+          <link rel="canonical" href="documentation/screenguard/">
+          </head>
+          <body>
+          <p>ScreenGuard API documentation: <a href="documentation/screenguard/">documentation/screenguard/</a></p>
+          </body>
+          </html>
+          HTML
+
+          # The redirect target must exist, and the pages under it must be addressed for this site's
+          # base path. Both are hard failures: a site that 404s is worse than a red build.
+          if [ ! -f "$site/documentation/$module/index.html" ]; then
+            echo "FAIL: $site/documentation/$module/index.html is missing."
+            echo "      The landing page redirects there, so the deploy would ship a dead link."
+            find "$site/documentation" -maxdepth 2 -type d 2>/dev/null | head -10
+            exit 1
+          fi
+          if ! grep -q "baseUrl = \"/$base/\"" "$site/documentation/$module/index.html"; then
+            echo "FAIL: the documentation pages were not rendered for the /%s/ base path." "$base"
+            grep -o 'baseUrl = "[^"]*"' "$site/documentation/$module/index.html" | head -3
+            exit 1
+          fi
+
+          printf 'site root   : %s\n' "$site"
+          printf 'base path   : /%s/\n' "$base"
+          printf 'pages       : %s html files\n' "$(find "$site" -name '*.html' | wc -l | tr -d ' ')"
+          printf 'landing     : %s\n' "$(grep -o 'url=documentation/[a-z]*/' "$site/index.html" | head -1)"
+
+      - name: Upload the site as a Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: deploy
+    needs: [build]
+    # Pages deployment is an upload; it does not need macOS.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The only job that touches Pages, and the only place these two scopes are granted.
+    permissions:
+      pages: write      # to deploy the artifact to Pages
+      id-token: write   # to prove the deployment comes from this workflow run
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
