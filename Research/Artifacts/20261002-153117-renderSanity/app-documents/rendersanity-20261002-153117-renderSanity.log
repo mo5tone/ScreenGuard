@@ -1,0 +1,7 @@
+=== CaptureMatrix render-sanity 20261002-153117-renderSanity ===
+RENDER-SANITY holding 20s for the host screenshot; cases top-to-bottom:
+RENDER-SANITY case 0 A capture=ON set-after-add  expect 229,25,25 | expectedOnScreen=229,25,25 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=true
+RENDER-SANITY case 1 B capture=ON set-before-add expect 38,191,64 | expectedOnScreen=38,191,64 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=true
+RENDER-SANITY case 2 C capture=OFF (control)     expect 242,216,25 | expectedOnScreen=242,216,25 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=false
+RENDER-SANITY hold finished
+RENDER-SANITY NOTE: the DISPLAY-ground-truth.png written by the host script is the evidence - sample it to see what the display shows, which capture protection cannot influence.

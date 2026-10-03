@@ -1,0 +1,33 @@
+name: CaptureMatrix
+options:
+  bundleIdPrefix: com.screenguard
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+targets:
+  CaptureMatrix:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Support/Info.plist
+      properties:
+        CFBundleDisplayName: CaptureMatrix
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.screenguard.capturematrix
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_ALLOWED: NO

@@ -1,0 +1,13 @@
+=== CaptureMatrix replaykit 20261002-151448-replayKit ===
+RK recorder isAvailable=true isRecording=false isMicrophoneEnabled=false
+RK UIScreen.main.isCaptured=false
+RK attempting startCapture (bound 30s)
+RK startCapture completion error=none
+RK startCapture result: NO FRAME in 30s (callbacks=0 video=0 audioApp=0 audioMic=0 nilImageBuffer=0 completionError=none)
+RK stopCapture completion error=none
+RK attempting startRecording (bound 15s)
+RK startRecording completion error=none isRecording=true
+RK after 15s isRecording=true
+RK startRecording result: see RK startRecording/stopRecording lines above
+RK capturedDidChange observations=0 finalIsCaptured=false
+RK CONCLUSION: NO FRAME in 30s (callbacks=0 video=0 audioApp=0 audioMic=0 nilImageBuffer=0 completionError=none) | see RK startRecording/stopRecording lines above

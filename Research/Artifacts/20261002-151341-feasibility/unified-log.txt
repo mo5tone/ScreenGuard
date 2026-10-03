@@ -1,0 +1,21 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-10-02 15:13:47.042 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] === CaptureMatrix feasibility 20261002-151341-feasibility ===
+2026-10-02 15:13:47.042 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY device=iPhone iOS 26.2 screenScale=3.0
+2026-10-02 15:13:47.042 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY protected host bounds=402x437 | reference host bounds=402x437
+2026-10-02 15:13:47.066 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY source 1206x1311 (UIGraphicsImageRenderer over a real view hierarchy: gradient + block + glyphs + 1px grid)
+2026-10-02 15:13:47.159 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/2A1909DB-7D8D-4E6B-A66B-0C861FC8A090/Documents/feasibility-source.png
+2026-10-02 15:13:47.181 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY enqueue protected accepted=true status=rendering ready=true
+2026-10-02 15:13:47.181 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY enqueue reference accepted=true status=rendering ready=true
+2026-10-02 15:13:47.181 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY holding 12s so the host can screenshot the display
+2026-10-02 15:13:59.280 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/2A1909DB-7D8D-4E6B-A66B-0C861FC8A090/Documents/feasibility-app-render.png
+2026-10-02 15:13:59.290 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY fidelity[reference-layer(capture=OFF)] windowRegion=(0.06, 0.58, 0.88, 0.37) sourceRegion=(0.06, 0.15999999999999992, 0.88, 0.74) comparedPixels=4096 meanAbsChannelError=3.77 maxAbsChannelError=154.67 (0 = identical, 255 = inverted)
+2026-10-02 15:13:59.295 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY fidelity[reference-layer(capture=OFF)] sourceSampleRGB=(53, 25, 85) capturedSampleRGB=(54, 26, 85)
+2026-10-02 15:13:59.304 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] FEASIBILITY region[protected-layer(capture=ON)] meanRGB=(0, 0, 0) maxChannel=0 nonBlackPixels=0/12744 -> NO-LEAK(black)
+2026-10-02 15:14:00.583 Df CaptureMatrix[27471:8e037] [com.screenguard.capturematrix:matrix] FEASIBILITY throughput[protected] frames=60 wall=1.28s achievedFPS=46.91 enqueue ms median=4.02 p95=6.12 max=10.22
+2026-10-02 15:14:00.584 Df CaptureMatrix[27471:8e037] [com.screenguard.capturematrix:matrix] FEASIBILITY cost[protected] cpuSeconds=0.254 cpuPerFrameMs=4.232 footprintDeltaMB=0.17 enqueueCount=61 rendererStatus=rendering
+2026-10-02 15:14:02.003 Df CaptureMatrix[27471:8e042] [com.screenguard.capturematrix:matrix] FEASIBILITY throughput[reference] frames=60 wall=1.42s achievedFPS=42.29 enqueue ms median=6.54 p95=8.03 max=9.61
+2026-10-02 15:14:02.003 Df CaptureMatrix[27471:8e042] [com.screenguard.capturematrix:matrix] FEASIBILITY cost[reference] cpuSeconds=0.426 cpuPerFrameMs=7.099 footprintDeltaMB=0.03 enqueueCount=61 rendererStatus=rendering
+2026-10-02 15:14:02.006 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/2A1909DB-7D8D-4E6B-A66B-0C861FC8A090/Documents/feasibility-20261002-151341-feasibility.json
+2026-10-02 15:14:02.009 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/2A1909DB-7D8D-4E6B-A66B-0C861FC8A090/Documents/feasibility-20261002-151341-feasibility.log
+2026-10-02 15:14:02.009 Df CaptureMatrix[27471:8e028] [com.screenguard.capturematrix:matrix] === CaptureMatrix feasibility 20261002-151341-feasibility done ===

@@ -1,0 +1,11 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-10-02 15:31:22.695 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] === CaptureMatrix render-sanity 20261002-153117-renderSanity ===
+2026-10-02 15:31:22.695 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY holding 20s for the host screenshot; cases top-to-bottom:
+2026-10-02 15:31:22.695 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY case 0 A capture=ON set-after-add  expect 229,25,25 | expectedOnScreen=229,25,25 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=true
+2026-10-02 15:31:22.696 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY case 1 B capture=ON set-before-add expect 38,191,64 | expectedOnScreen=38,191,64 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=true
+2026-10-02 15:31:22.696 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY case 2 C capture=OFF (control)     expect 242,216,25 | expectedOnScreen=242,216,25 | layerFrames=402x291@0,0 enqueued=1 rendererStatus=rendering preventsCapture=false
+2026-10-02 15:31:43.693 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY hold finished
+2026-10-02 15:31:43.693 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] RENDER-SANITY NOTE: the DISPLAY-ground-truth.png written by the host script is the evidence - sample it to see what the display shows, which capture protection cannot influence.
+2026-10-02 15:31:43.703 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/3E5EA1A0-4AF4-4CCA-9346-00F0ACAC891C/Documents/rendersanity-20261002-153117-renderSanity.log
+2026-10-02 15:31:43.703 Df CaptureMatrix[28975:91d66] [com.screenguard.capturematrix:matrix] === CaptureMatrix render-sanity 20261002-153117-renderSanity done ===

@@ -1,0 +1,254 @@
+{
+  "device" : "iPhone iOS 26.2",
+  "paths" : {
+    "app-render(drawHierarchy)" : {
+      "colours" : [
+        {
+          "band" : 0,
+          "maxChannel" : 229,
+          "meanRGB" : [
+            229,
+            25,
+            25
+          ],
+          "title" : "1 plain colour (control)",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 1,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "2 AVSBDL capture=ON",
+          "verdict" : "SENTINEL-SHOWS(transparent)"
+        },
+        {
+          "band" : 2,
+          "maxChannel" : 242,
+          "meanRGB" : [
+            242,
+            216,
+            25
+          ],
+          "title" : "3 AVSBDL capture=OFF",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 3,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "4 secure-layer swap",
+          "verdict" : "SENTINEL-SHOWS(transparent)"
+        },
+        {
+          "band" : 4,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "5 secure UITextField",
+          "verdict" : "N\/A(no-colour-signal)"
+        },
+        {
+          "band" : 5,
+          "maxChannel" : 242,
+          "meanRGB" : [
+            38,
+            102,
+            242
+          ],
+          "title" : "6 secure-layer swap DISABLED (control)",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 6,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "7 plain UITextField (calibration)",
+          "verdict" : "N\/A(no-colour-signal)"
+        },
+        {
+          "band" : 7,
+          "maxChannel" : 0,
+          "meanRGB" : [
+            0,
+            0,
+            0
+          ],
+          "title" : "8 AVSBDL capture=ON + black shield",
+          "verdict" : "NO-LEAK(black)"
+        }
+      ],
+      "detail" : {
+        "bitsPerComponent" : 16,
+        "bitsPerPixel" : 64,
+        "bytesPerRow" : 3232,
+        "height" : 874,
+        "width" : 402
+      },
+      "note" : "402x874 bpc=16 bpp=64",
+      "status" : "measured",
+      "texts" : [
+        {
+          "band" : 4,
+          "darkPixels" : 0,
+          "ratio" : 0,
+          "title" : "5 secure UITextField",
+          "totalPixels" : 1068,
+          "verdict" : "TEXT-BLANKED"
+        },
+        {
+          "band" : 6,
+          "darkPixels" : 205,
+          "ratio" : 0.19194756554307116,
+          "title" : "7 plain UITextField (calibration)",
+          "totalPixels" : 1068,
+          "verdict" : "TEXT-LEAKED"
+        }
+      ]
+    },
+    "app-render(layer.render)" : {
+      "colours" : [
+        {
+          "band" : 0,
+          "maxChannel" : 229,
+          "meanRGB" : [
+            229,
+            25,
+            25
+          ],
+          "title" : "1 plain colour (control)",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 1,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "2 AVSBDL capture=ON",
+          "verdict" : "SENTINEL-SHOWS(transparent)"
+        },
+        {
+          "band" : 2,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "3 AVSBDL capture=OFF",
+          "verdict" : "SENTINEL-SHOWS(transparent)"
+        },
+        {
+          "band" : 3,
+          "maxChannel" : 242,
+          "meanRGB" : [
+            38,
+            102,
+            242
+          ],
+          "title" : "4 secure-layer swap",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 4,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "5 secure UITextField",
+          "verdict" : "N\/A(no-colour-signal)"
+        },
+        {
+          "band" : 5,
+          "maxChannel" : 242,
+          "meanRGB" : [
+            38,
+            102,
+            242
+          ],
+          "title" : "6 secure-layer swap DISABLED (control)",
+          "verdict" : "LEAKED(visible)"
+        },
+        {
+          "band" : 6,
+          "maxChannel" : 200,
+          "meanRGB" : [
+            200,
+            0,
+            160
+          ],
+          "title" : "7 plain UITextField (calibration)",
+          "verdict" : "N\/A(no-colour-signal)"
+        },
+        {
+          "band" : 7,
+          "maxChannel" : 0,
+          "meanRGB" : [
+            0,
+            0,
+            0
+          ],
+          "title" : "8 AVSBDL capture=ON + black shield",
+          "verdict" : "NO-LEAK(black)"
+        }
+      ],
+      "detail" : {
+        "height" : 874,
+        "origin" : "top-left after flip",
+        "width" : 402
+      },
+      "note" : "402x874 via CALayer.render(in:) (flipped to top-left origin)",
+      "status" : "measured",
+      "texts" : [
+        {
+          "band" : 4,
+          "darkPixels" : 184,
+          "ratio" : 0.17228464419475656,
+          "title" : "5 secure UITextField",
+          "totalPixels" : 1068,
+          "verdict" : "TEXT-LEAKED"
+        },
+        {
+          "band" : 6,
+          "darkPixels" : 184,
+          "ratio" : 0.17228464419475656,
+          "title" : "7 plain UITextField (calibration)",
+          "totalPixels" : 1068,
+          "verdict" : "TEXT-LEAKED"
+        }
+      ]
+    },
+    "system-capture(RPScreenRecorder)" : {
+      "detail" : {
+        "frameReceived" : false,
+        "isAvailable" : true
+      },
+      "note" : "started but no video frame arrived (bounded 12s wait)",
+      "status" : "not-measured"
+    }
+  },
+  "runID" : "20261002-151754-matrix",
+  "window" : {
+    "height" : 874,
+    "width" : 402
+  }
+}

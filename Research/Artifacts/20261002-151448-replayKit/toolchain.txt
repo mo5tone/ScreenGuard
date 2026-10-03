@@ -1,0 +1,5 @@
+Xcode 27.0
+Build version 27A266a
+swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+Target: arm64-apple-macosx26.0
+    iPhone 17 Pro (DCF67420-9B92-463F-AE79-858C03C7AA38) (Booted) 

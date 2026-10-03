@@ -1,0 +1,49 @@
+secure-layer-swap: canvas class = _UITextLayoutCanvasView
+secure-layer-swap: swap applied
+secure-layer-swap: control band - swap deliberately NOT applied
+=== CaptureMatrix 20261002-151754-matrix ===
+METHOD window=402x874 scale=3.0
+METHOD bands=8 equal height; colour rect=(0.76, 0.5, 0.18, 0.22) of band; text strip=(0.28, 0.4, 0.44, 0.22) of band
+METHOD sentinel colour rgb=200,0,160 painted behind every technique view
+METHOD band 0 1 plain colour (control) expected rgb=229,25,25
+METHOD band 1 2 AVSBDL capture=ON expected rgb=38,191,64
+METHOD band 2 3 AVSBDL capture=OFF expected rgb=242,216,25
+METHOD band 3 4 secure-layer swap expected rgb=38,102,242
+METHOD band 4 5 secure UITextField expected rgb=242,140,13 text="SECRET-9930"
+METHOD band 5 6 secure-layer swap DISABLED (control) expected rgb=38,102,242
+METHOD band 6 7 plain UITextField (calibration) expected rgb=150,60,200 text="SECRET-9930"
+METHOD band 7 8 AVSBDL capture=ON + black shield expected rgb=38,191,64
+METHOD environment device=iPhone system=iOS 26.2
+--- PATH app-render(drawHierarchy) ---
+PATH app-render(drawHierarchy) | 402x874 bpc=16 bpp=64
+PATH app-render(drawHierarchy) | WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/A232CC79-0420-4987-A094-996557F9AFFC/Documents/capture-app-render-drawHierarchy.png
+SAMPLE app-render(drawHierarchy) | band 0 1 plain colour (control) | meanRGB=(229, 25, 25) medianRGB=(229, 25, 25) maxChannel=229 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(drawHierarchy) | band 1 2 AVSBDL capture=ON | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=191.0 -> SENTINEL-SHOWS(transparent)
+SAMPLE app-render(drawHierarchy) | band 2 3 AVSBDL capture=OFF | meanRGB=(242, 216, 25) medianRGB=(242, 216, 25) maxChannel=242 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(drawHierarchy) | band 3 4 secure-layer swap | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=162.0 -> SENTINEL-SHOWS(transparent)
+SAMPLE app-render(drawHierarchy) | band 4 5 secure UITextField | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=147.0 -> N/A(no-colour-signal)
+SAMPLE app-render(drawHierarchy) | band 5 6 secure-layer swap DISABLED (control) | meanRGB=(38, 102, 242) medianRGB=(38, 102, 242) maxChannel=242 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(drawHierarchy) | band 6 7 plain UITextField (calibration) | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=60.0 -> N/A(no-colour-signal)
+SAMPLE app-render(drawHierarchy) | band 7 8 AVSBDL capture=ON + black shield | meanRGB=(0, 0, 0) medianRGB=(0, 0, 0) maxChannel=0 samples=192 deltaFromExpected=191.0 -> NO-LEAK(black)
+TEXT app-render(drawHierarchy) | band 4 5 secure UITextField | darkPixels=0/1068 (0.00%) -> TEXT-BLANKED
+TEXT app-render(drawHierarchy) | band 6 7 plain UITextField (calibration) | darkPixels=205/1068 (19.19%) -> TEXT-LEAKED
+system-capture: isAvailable=true isRecording=false isMicrophoneEnabled=false
+system-capture: startCapture completion fired with no error (pipeline is live)
+system-capture: no frame within 12s; bufferTypesSeen=[] callbackInvocations=0
+--- PATH system-capture(RPScreenRecorder) ---
+PATH system-capture(RPScreenRecorder) | started but no video frame arrived (bounded 12s wait)
+PATH system-capture(RPScreenRecorder) | NOT-MEASURED: started but no video frame arrived (bounded 12s wait)
+--- PATH app-render(layer.render) ---
+PATH app-render(layer.render) | 402x874 via CALayer.render(in:) (flipped to top-left origin)
+PATH app-render(layer.render) | WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/A232CC79-0420-4987-A094-996557F9AFFC/Documents/capture-app-render-layer-render.png
+SAMPLE app-render(layer.render) | band 0 1 plain colour (control) | meanRGB=(229, 25, 25) medianRGB=(229, 25, 25) maxChannel=229 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(layer.render) | band 1 2 AVSBDL capture=ON | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=191.0 -> SENTINEL-SHOWS(transparent)
+SAMPLE app-render(layer.render) | band 2 3 AVSBDL capture=OFF | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=216.0 -> SENTINEL-SHOWS(transparent)
+SAMPLE app-render(layer.render) | band 3 4 secure-layer swap | meanRGB=(38, 102, 242) medianRGB=(38, 102, 242) maxChannel=242 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(layer.render) | band 4 5 secure UITextField | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=147.0 -> N/A(no-colour-signal)
+SAMPLE app-render(layer.render) | band 5 6 secure-layer swap DISABLED (control) | meanRGB=(38, 102, 242) medianRGB=(38, 102, 242) maxChannel=242 samples=192 deltaFromExpected=0.0 -> LEAKED(visible)
+SAMPLE app-render(layer.render) | band 6 7 plain UITextField (calibration) | meanRGB=(200, 0, 160) medianRGB=(200, 0, 160) maxChannel=200 samples=192 deltaFromExpected=60.0 -> N/A(no-colour-signal)
+SAMPLE app-render(layer.render) | band 7 8 AVSBDL capture=ON + black shield | meanRGB=(0, 0, 0) medianRGB=(0, 0, 0) maxChannel=0 samples=192 deltaFromExpected=191.0 -> NO-LEAK(black)
+TEXT app-render(layer.render) | band 4 5 secure UITextField | darkPixels=184/1068 (17.23%) -> TEXT-LEAKED
+TEXT app-render(layer.render) | band 6 7 plain UITextField (calibration) | darkPixels=184/1068 (17.23%) -> TEXT-LEAKED
+WROTE /Users/jiefu/Library/Developer/CoreSimulator/Devices/DCF67420-9B92-463F-AE79-858C03C7AA38/data/Containers/Data/Application/A232CC79-0420-4987-A094-996557F9AFFC/Documents/matrix-20261002-151754-matrix.json
