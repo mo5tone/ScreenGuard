@@ -1,0 +1,5 @@
+# Default owner: the repository owner reviews every path.
+#
+# GitHub applies the LAST matching pattern, so the catch-all stays first and any narrower rule
+# added later (a subdirectory with another reviewer) takes precedence for that path.
+*       @mo5tone

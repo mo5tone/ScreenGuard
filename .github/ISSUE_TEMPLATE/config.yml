@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Report a security vulnerability (privately)"
+    url: https://github.com/mo5tone/ScreenGuard/security/advisories/new
+    about: "Leaks, protection bypasses and silent failures — report them privately, never in a public issue. SECURITY.md lists what is and is not a vulnerability."
+  - name: "Read the capability contract first"
+    url: https://github.com/mo5tone/ScreenGuard/blob/main/docs/api-contract.md
+    about: "What ScreenGuard guarantees, what it does not, and the status of every capability claim."
+  - name: "How to build, test and run the gates"
+    url: https://github.com/mo5tone/ScreenGuard/blob/main/CONTRIBUTING.md
+    about: "mise setup (trust, install), the frozen task names, and the enforced Conventional Commit titles."

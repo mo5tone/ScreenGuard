@@ -1,0 +1,79 @@
+name: Bug report
+description: "Something misbehaves — a leak, a wrong verdict, a crash, or a claim that does not match the measurement"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Two rules decide whether it can be acted on:
+
+        * **The capture path matters more than anything else.** An app-side
+          `window.drawHierarchy(in:afterScreenUpdates: false)` read or a ReplayKit capture can show a
+          leak. A host-side capture (`xcrun simctl io screenshot`, sim-use `screenshot` /
+          `record-video`) reads the display from outside the render server, bypasses capture
+          protection by construction, and can never produce a valid leak verdict — it is contrast
+          only (docs/TOOLING.md section 3).
+        * **A blank region is ambiguous.** Say what an unshielded sentinel band beside the protected
+          region read, so "excluded from the capture" can be told apart from "never painted".
+
+        If this is a leak or a protection bypass, report it privately instead: see SECURITY.md.
+  - type: dropdown
+    id: capture-path
+    attributes:
+      label: Which capture path produced what you saw?
+      description: "This decides whether a leak verdict is even possible (docs/TOOLING.md section 3)."
+      options:
+        - "App-side render — window.drawHierarchy(in:afterScreenUpdates: false)"
+        - "ReplayKit — RPScreenRecorder.shared().startCapture"
+        - "Host-side display capture — xcrun simctl io screenshot, or sim-use screenshot / record-video"
+        - "App-switcher snapshot — SplashBoard/Snapshots/**/*.ktx"
+        - "No capture involved (build, API usage, crash)"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: "Quote the exact readings where you have them: the protected region and the control band."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How can it be reproduced?
+      description: "The smallest reproduction you have, plus the exact command you ran."
+      placeholder: |
+        1. ...
+        2. mise run demo:verify ...
+        3. Observed: ...
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: "Simulator or device model, iOS version, Xcode version, ScreenGuard version or commit."
+      placeholder: "iPhone 17 Pro Simulator, iOS 26.2, Xcode 26.0, ScreenGuard 1.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifacts
+      description: "The PNG and the samples/JSON output, if you can share them. Measured pixels beat a description."
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you file
+      options:
+        - label: "I checked docs/api-contract.md section 4 and this is not a row that is already marked notPossible or device-pending."
+          required: true
+        - label: "I understand a host-side capture cannot produce a leak verdict, and I have named the path I used."
+          required: true
+        - label: "This is not a security report — those go through SECURITY.md, privately."
+          required: true
