@@ -1,8 +1,8 @@
 import Foundation
 import ImageIO
+import os
 import UIKit
 import UniformTypeIdentifiers
-import os
 
 /// Writes every raw measurement line to two places at once: the unified log (`os.Logger`) and a
 /// plain-text file in the app's Documents directory, which the host script pulls out of the
@@ -40,7 +40,9 @@ final class RunLog: @unchecked Sendable {
 
     @discardableResult
     func writePNG(_ image: UIImage, name: String) -> URL? {
-        guard let data = image.pngData() else { return nil }
+        guard let data = image.pngData() else {
+            return nil
+        }
         let url = Self.documents.appendingPathComponent(name)
         do {
             try data.write(to: url)
@@ -85,7 +87,9 @@ final class RunLog: @unchecked Sendable {
     func writeJSON(_ object: [String: Any], name: String) -> URL? {
         guard JSONSerialization.isValidJSONObject(object),
               let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
-        else { return nil }
+        else {
+            return nil
+        }
         let url = Self.documents.appendingPathComponent(name)
         do {
             try data.write(to: url)
@@ -99,7 +103,9 @@ final class RunLog: @unchecked Sendable {
 
 /// Wall-clock and CPU helpers. `task_info` is the only public in-process cost source on iOS.
 enum Stats {
-    static func now() -> Double { Double(DispatchTime.now().uptimeNanoseconds) / 1e9 }
+    static func now() -> Double {
+        Double(DispatchTime.now().uptimeNanoseconds) / 1e9
+    }
 
     /// Cumulative CPU seconds (user + system) burned by this process.
     static func cpuSeconds() -> Double {
@@ -110,7 +116,9 @@ enum Stats {
                 task_info(mach_task_self_, task_flavor_t(TASK_ABSOLUTETIME_INFO), $0, &count)
             }
         }
-        guard result == KERN_SUCCESS else { return -1 }
+        guard result == KERN_SUCCESS else {
+            return -1
+        }
         var timebase = mach_timebase_info_data_t()
         mach_timebase_info(&timebase)
         let numer = Double(timebase.numer)
@@ -126,12 +134,16 @@ enum Stats {
                 task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
-        guard result == KERN_SUCCESS else { return -1 }
+        guard result == KERN_SUCCESS else {
+            return -1
+        }
         return Double(info.phys_footprint) / 1024 / 1024
     }
 
     static func percentile(_ sorted: [Double], _ fraction: Double) -> Double {
-        guard !sorted.isEmpty else { return -1 }
+        guard !sorted.isEmpty else {
+            return -1
+        }
         let index = min(sorted.count - 1, max(0, Int((Double(sorted.count - 1) * fraction).rounded())))
         return sorted[index]
     }

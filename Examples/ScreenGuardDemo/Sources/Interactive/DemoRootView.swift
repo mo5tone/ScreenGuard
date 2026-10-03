@@ -30,13 +30,12 @@
 //     missing rather than the mechanism — a clearly labelled synthetic stand-in.
 //
 
+import ScreenGuard
 import SwiftUI
 import UIKit
-import ScreenGuard
 
 /// The interactive demo screen.
 struct DemoRootView: View {
-
     /// The user-facing settings.
     @StateObject private var settings = DemoSettings()
 
@@ -95,7 +94,9 @@ struct DemoRootView: View {
         }
         .navigationViewStyle(.stack)
         .sheet(isPresented: $showingCaptureSheet) {
-            if let captured { CaptureResultSheet(frame: captured) }
+            if let captured {
+                CaptureResultSheet(frame: captured)
+            }
         }
         .sheet(isPresented: $showingStatus) {
             DemoCapabilityScreen().ignoresSafeArea()
@@ -159,7 +160,6 @@ struct DemoRootView: View {
     }
 
     /// The inline result of a capture: verdicts, a one-line conclusion, and the image.
-    @ViewBuilder
     private func captureResult(_ frame: DemoCapturedFrame) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(frame.readings) { reading in
@@ -383,7 +383,7 @@ struct DemoRootView: View {
 
                 HStack {
                     Text("Opacity").font(.caption)
-                    Slider(value: $settings.watermarkOpacity, in: 0.05...0.9)
+                    Slider(value: $settings.watermarkOpacity, in: 0.05 ... 0.9)
                     Text(String(format: "%.2f", settings.watermarkOpacity))
                         .font(.caption2.monospaced())
                         .foregroundColor(.secondary)
@@ -521,7 +521,9 @@ struct DemoRootView: View {
             get: { cover != nil },
             set: { wantsCover in
                 if wantsCover {
-                    guard let window = Self.keyWindow else { return }
+                    guard let window = Self.keyWindow else {
+                        return
+                    }
                     let shield = ScreenGuardAppSwitcherShield(
                         style: settings.coverIsOpaque
                             ? .opaque(color: .systemBackground)
@@ -587,7 +589,9 @@ struct DemoRootView: View {
 
     /// Takes the app-side read and classifies the regions the user is looking at.
     private func takeCapture() {
-        guard let window = Self.keyWindow else { return }
+        guard let window = Self.keyWindow else {
+            return
+        }
         let candidates: [(label: String, frame: CGRect)] = [
             (label: DemoCapture.controlLabel, frame: controlFrame),
             (label: "Protected (\(settings.protectedStrategy.rawValue))", frame: protectedFrame),
@@ -606,7 +610,7 @@ struct DemoRootView: View {
     private static var keyWindow: UIWindow? {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
+            .flatMap(\.windows)
             .first { $0.isKeyWindow }
     }
 }
@@ -619,7 +623,6 @@ struct DemoRootView: View {
 /// takes its `ScreenGuardConfiguration` at construction, so a switch that changes detection must
 /// produce a new monitor. The parent forces that with `.id(settings.detectionGeneration)`.
 private struct DetectionCardBody: View {
-
     /// The monitor, built from the configuration the demo settings produced.
     @StateObject private var monitor: ScreenGuardMonitor
 
@@ -701,10 +704,14 @@ private struct DetectionCardBody: View {
     /// - Returns: A short label.
     private static func describe(_ kind: ScreenGuardEvent.Kind) -> String {
         switch kind {
-        case .screenshotTaken: return "screenshotTaken"
-        case .captureBegan: return "captureBegan"
-        case .captureEnded: return "captureEnded"
-        case .protectionDegraded(let reason): return "protectionDegraded(\(reason.rawValue))"
+        case .screenshotTaken:
+            "screenshotTaken"
+        case .captureBegan:
+            "captureBegan"
+        case .captureEnded:
+            "captureEnded"
+        case let .protectionDegraded(reason):
+            "protectionDegraded(\(reason.rawValue))"
         }
     }
 
@@ -721,7 +728,9 @@ private struct DetectionCardBody: View {
     /// - Parameter date: The date, if any.
     /// - Returns: A short local time, or `"none"`.
     private static func timestamp(_ date: Date?) -> String {
-        guard let date else { return "none" }
+        guard let date else {
+            return "none"
+        }
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         return formatter.string(from: date)
@@ -732,7 +741,6 @@ private struct DetectionCardBody: View {
 
 /// Shows a capture full-screen so the user can inspect it closely.
 struct CaptureResultSheet: View {
-
     /// The frame to show.
     let frame: DemoCapturedFrame
 

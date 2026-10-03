@@ -31,7 +31,7 @@ let package = Package(
     // iOS 15.0 is the deployment floor. No macOS / tvOS / watchOS / visionOS support is claimed or
     // tested (docs/api-contract.md §2).
     platforms: [
-        .iOS(.v15)
+        .iOS(.v15),
     ],
     // NOTE: `products:` must precede `traits:` or the manifest fails to parse with
     // "argument 'products' must precede argument 'traits'".
@@ -41,7 +41,7 @@ let package = Package(
         .library(
             name: "ScreenGuard",
             targets: ["ScreenGuard"]
-        )
+        ),
     ],
     // ESCAPE HATCH — keep the private-API class name out of your binary.
     //
@@ -66,7 +66,7 @@ let package = Package(
             name: "PrivateAPI",
             description: "Compile in the opt-in private secure-layer path. Private API: non-contract, App Review risk."
         ),
-        .default(enabledTraits: [])
+        .default(enabledTraits: []),
     ],
     // ZERO third-party dependencies. System frameworks only (docs/api-contract.md §1 rule 2).
     dependencies: [],
@@ -80,7 +80,7 @@ let package = Package(
                 // to this change (docs/TOOLING.md §6.7).
                 .swiftLanguageMode(.v5),
                 // The ONLY thing that compiles the private-API code in.
-                .define("SCREENGUARD_PRIVATE_API", .when(traits: ["PrivateAPI"]))
+                .define("SCREENGUARD_PRIVATE_API", .when(traits: ["PrivateAPI"])),
             ]
         ),
         .testTarget(
@@ -90,9 +90,8 @@ let package = Package(
             swiftSettings: [
                 // Same reason as the library target: keep Swift 5 semantics so raising the tools
                 // version to 6.1 does not impose the Swift 6 language mode on the tests either.
-                .swiftLanguageMode(.v5)
+                .swiftLanguageMode(.v5),
             ]
-        )
+        ),
     ]
 )
-

@@ -55,7 +55,6 @@ import UIKit
 /// Not public API: an internal detail of `ScreenGuardShieldView`.
 @MainActor
 enum ScreenGuardContentRasterizer {
-
     /// Renders `view` at `size` and `scale`.
     ///
     /// The view is expected to be **detached** from the live hierarchy on the public path, and this
@@ -67,7 +66,9 @@ enum ScreenGuardContentRasterizer {
     ///   - scale: The target scale (typically `UITraitCollection.displayScale`).
     /// - Returns: The rendered image, or `nil` when `size` is degenerate.
     static func rasterize(_ view: UIView, size: CGSize, scale: CGFloat) -> UIImage? {
-        guard size.width > 1, size.height > 1 else { return nil }
+        guard size.width > 1, size.height > 1 else {
+            return nil
+        }
 
         // A detached view is never laid out by UIKit, so give it the target geometry explicitly. This
         // is what makes an off-hierarchy rasterisation possible at all.

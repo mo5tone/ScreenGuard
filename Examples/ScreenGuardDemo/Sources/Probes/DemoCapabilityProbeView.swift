@@ -19,13 +19,12 @@
 //  from the contract.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// Writes the package's capability registry to an artifact.
 @MainActor
 final class DemoCapabilityProbeView: UIView {
-
     private let runID: String
     private let label = UILabel()
 
@@ -49,13 +48,17 @@ final class DemoCapabilityProbeView: UIView {
 
     /// Unavailable. Use `init(runID:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoCapabilityProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoCapabilityProbeView must be created programmatically")
+    }
 
     private var hasRun = false
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, !hasRun else { return }
+        guard window != nil, !hasRun else {
+            return
+        }
         hasRun = true
 
         let log = DemoLog.shared
@@ -77,7 +80,7 @@ final class DemoCapabilityProbeView: UIView {
         ]
         let preventStatuses = statuses
             .filter { expectedPreventStatuses.contains($0.capability.rawValue) }
-            .map { $0.status.rawValue }
+            .map(\.status.rawValue)
         log.log("HONESTY preventCapabilitiesResolveToNotPossible="
             + "\(preventStatuses.allSatisfy { $0 == ScreenGuardVerificationStatus.notPossible.rawValue }) "
             + "(\(preventStatuses.joined(separator: ",")))")

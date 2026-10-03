@@ -19,13 +19,12 @@
 //  strategy, without the package needing to poll a global.
 //
 
+import ScreenGuard
 import SwiftUI
 import UIKit
-import ScreenGuard
 
 /// Hosts a `DemoShieldContainer` around arbitrary SwiftUI content.
 struct DemoShieldRepresentable: UIViewRepresentable {
-
     /// The strategy to request.
     let strategy: ScreenGuardNoLeakStrategy
 
@@ -66,7 +65,9 @@ struct DemoShieldRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: DemoShieldContainer, context: Context) {
         let strategyChanged = uiView.requestedStrategy != strategy
         let optInChanged = context.coordinator.appliedGeneration != optInGeneration
-        guard strategyChanged || optInChanged else { return }
+        guard strategyChanged || optInChanged else {
+            return
+        }
         context.coordinator.appliedGeneration = optInGeneration
         uiView.request(strategy)
     }
@@ -74,11 +75,12 @@ struct DemoShieldRepresentable: UIViewRepresentable {
     /// Holds the generation the container has already applied.
     ///
     /// - Returns: A fresh coordinator.
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     /// Per-representable bookkeeping.
     final class Coordinator {
-
         /// The `optInGeneration` the container was last asked to apply.
         var appliedGeneration = Int.min
     }

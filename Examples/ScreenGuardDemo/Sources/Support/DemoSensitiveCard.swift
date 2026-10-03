@@ -16,7 +16,6 @@ import UIKit
 
 /// A card carrying an account-like secret, with a text-free lower half.
 final class DemoSensitiveCard: UIView {
-
     /// The card's title line.
     private let titleLabel = UILabel()
 
@@ -64,12 +63,13 @@ final class DemoSensitiveCard: UIView {
 
     /// Unavailable. Use `init()`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoSensitiveCard must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoSensitiveCard must be created programmatically")
+    }
 }
 
 /// Builds the small label chips the probe page uses to identify each region.
 enum DemoLabelFactory {
-
     /// A dark chip with white monospaced text, sized to its content.
     ///
     /// - Parameters:

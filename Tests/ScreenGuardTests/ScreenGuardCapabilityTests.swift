@@ -7,11 +7,10 @@
 //  row, so a change to the package's promises fails the build rather than the review.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 final class ScreenGuardCapabilityTests: XCTestCase {
-
     /// §4 has exactly ten rows. The enum must have exactly ten cases, in the same order.
     func testRegistryHasExactlyTheTenContractRowsInOrder() {
         let expected: [ScreenGuardCapability] = [
@@ -24,7 +23,7 @@ final class ScreenGuardCapabilityTests: XCTestCase {
             .watermark,
             .appSwitcherSnapshotProtection,
             .preventUserScreenshot,
-            .preventUserRecording
+            .preventUserRecording,
         ]
 
         XCTAssertEqual(ScreenGuardCapability.allCases, expected)
@@ -45,7 +44,7 @@ final class ScreenGuardCapabilityTests: XCTestCase {
             .watermark: .notMeasured,
             .appSwitcherSnapshotProtection: .devicePending,
             .preventUserScreenshot: .notPossible,
-            .preventUserRecording: .notPossible
+            .preventUserRecording: .notPossible,
         ]
 
         for (capability, status) in expected {

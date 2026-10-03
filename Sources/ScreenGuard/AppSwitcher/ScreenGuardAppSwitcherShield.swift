@@ -25,7 +25,6 @@ import UIKit
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardAppSwitcherStyle {
-
     /// A blur of the covered content. Default.
     case blur(style: UIBlurEffect.Style)
 
@@ -52,7 +51,6 @@ public enum ScreenGuardAppSwitcherStyle {
 /// iOS 15-compatible — no availability guard is required.
 @MainActor
 public final class ScreenGuardAppSwitcherShield: UIView {
-
     // MARK: - Public surface
 
     /// The cover's appearance. Changing it updates the installed cover immediately.
@@ -110,14 +108,19 @@ public final class ScreenGuardAppSwitcherShield: UIView {
             coverView.leadingAnchor.constraint(equalTo: leadingAnchor),
             coverView.trailingAnchor.constraint(equalTo: trailingAnchor),
             coverView.topAnchor.constraint(equalTo: topAnchor),
-            coverView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            coverView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         applyStyle()
     }
 
     /// Unavailable. Use `init(style:)`.
     @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("ScreenGuardAppSwitcherShield must be created programmatically") }
+    public required init?(coder: NSCoder) {
+        // Referenced so the parameter keeps its documented name: this view is not constructible from a
+        // nib, and the formatter renames an unreferenced parameter.
+        _ = coder
+        fatalError("ScreenGuardAppSwitcherShield must be created programmatically")
+    }
 
     // MARK: - Install
 
@@ -129,17 +132,21 @@ public final class ScreenGuardAppSwitcherShield: UIView {
     ///
     /// - Parameter window: The window to cover. It must be retained by the host.
     public func install(on window: UIWindow) {
-        if isInstalled, self.hostWindow === window { return }
-        if isInstalled { uninstall() }
+        if isInstalled, hostWindow === window {
+            return
+        }
+        if isInstalled {
+            uninstall()
+        }
 
-        self.hostWindow = window
+        hostWindow = window
         translatesAutoresizingMaskIntoConstraints = false
         window.addSubview(self)
         NSLayoutConstraint.activate([
             leadingAnchor.constraint(equalTo: window.leadingAnchor),
             trailingAnchor.constraint(equalTo: window.trailingAnchor),
             topAnchor.constraint(equalTo: window.topAnchor),
-            bottomAnchor.constraint(equalTo: window.bottomAnchor)
+            bottomAnchor.constraint(equalTo: window.bottomAnchor),
         ])
         window.bringSubviewToFront(self)
         isInstalled = true
@@ -235,7 +242,7 @@ public final class ScreenGuardAppSwitcherShield: UIView {
         effectView = nil
 
         switch style {
-        case .blur(let blurStyle):
+        case let .blur(blurStyle):
             coverView.backgroundColor = .clear
             let blur = UIVisualEffectView(effect: UIBlurEffect(style: blurStyle))
             blur.translatesAutoresizingMaskIntoConstraints = false
@@ -244,16 +251,18 @@ public final class ScreenGuardAppSwitcherShield: UIView {
                 blur.leadingAnchor.constraint(equalTo: coverView.leadingAnchor),
                 blur.trailingAnchor.constraint(equalTo: coverView.trailingAnchor),
                 blur.topAnchor.constraint(equalTo: coverView.topAnchor),
-                blur.bottomAnchor.constraint(equalTo: coverView.bottomAnchor)
+                blur.bottomAnchor.constraint(equalTo: coverView.bottomAnchor),
             ])
             effectView = blur
 
-        case .opaque(let color):
+        case let .opaque(color):
             coverView.backgroundColor = color
 
-        case .branded(let image, let backgroundColor):
+        case let .branded(image, backgroundColor):
             coverView.backgroundColor = backgroundColor
-            guard let image else { return }
+            guard let image else {
+                return
+            }
             let imageView = UIImageView(image: image)
             imageView.contentMode = .center
             imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -262,7 +271,7 @@ public final class ScreenGuardAppSwitcherShield: UIView {
                 imageView.leadingAnchor.constraint(equalTo: coverView.leadingAnchor),
                 imageView.trailingAnchor.constraint(equalTo: coverView.trailingAnchor),
                 imageView.topAnchor.constraint(equalTo: coverView.topAnchor),
-                imageView.bottomAnchor.constraint(equalTo: coverView.bottomAnchor)
+                imageView.bottomAnchor.constraint(equalTo: coverView.bottomAnchor),
             ])
             effectView = imageView
         }

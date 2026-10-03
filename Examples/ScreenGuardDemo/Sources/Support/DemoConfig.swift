@@ -13,7 +13,6 @@ import Foundation
 
 /// Launch-argument configuration for the example app.
 enum DemoConfig {
-
     /// What the app should do at launch.
     ///
     /// `none` is the interactive demo a human looks at. Every other case is a scripted probe that
@@ -51,7 +50,9 @@ enum DemoConfig {
     /// - Returns: The following argument, or `nil` when the key is absent or last.
     static func value(for key: String) -> String? {
         let arguments = ProcessInfo.processInfo.arguments
-        guard let index = arguments.firstIndex(of: key), index + 1 < arguments.count else { return nil }
+        guard let index = arguments.firstIndex(of: key), index + 1 < arguments.count else {
+            return nil
+        }
         return arguments[index + 1]
     }
 
@@ -62,7 +63,9 @@ enum DemoConfig {
     }
 
     /// A run identifier supplied by the host script, so artifacts are attributable to one run.
-    static var runID: String { value(for: "-RunID") ?? "adhoc" }
+    static var runID: String {
+        value(for: "-RunID") ?? "adhoc"
+    }
 
     /// Whether the scripted run should grant the private-API opt-in.
     ///
@@ -70,8 +73,12 @@ enum DemoConfig {
     /// path is a private API: non-contract, fragile across iOS releases, an App Review risk, and never
     /// a security guarantee (`docs/api-contract.md` §9). Nothing in the demo turns it on by itself —
     /// see `DemoRootView`'s toggle, which is the interactive equivalent of this flag.
-    static var privateOptIn: Bool { value(for: "-PrivateOptIn") == "1" }
+    static var privateOptIn: Bool {
+        value(for: "-PrivateOptIn") == "1"
+    }
 
     /// Whether a scripted probe is running.
-    static var isProbing: Bool { probeMode != .none }
+    static var isProbing: Bool {
+        probeMode != .none
+    }
 }

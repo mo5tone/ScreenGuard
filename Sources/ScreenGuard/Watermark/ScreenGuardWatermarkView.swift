@@ -21,7 +21,6 @@ import UIKit
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardWatermarkConfiguration {
-
     /// Primary mark, e.g. `"CONFIDENTIAL"`.
     public var text: String
 
@@ -110,7 +109,9 @@ public struct ScreenGuardWatermarkConfiguration {
     /// - Returns: The non-empty lines of one tile.
     public func tileLines(at date: Date) -> [String] {
         var lines: [String] = [text]
-        if let secondaryText, !secondaryText.isEmpty { lines.append(secondaryText) }
+        if let secondaryText, !secondaryText.isEmpty {
+            lines.append(secondaryText)
+        }
         if includesTimestamp {
             let formatter = DateFormatter()
             formatter.dateFormat = timestampFormat
@@ -137,7 +138,6 @@ public struct ScreenGuardWatermarkConfiguration {
 /// iOS 15-compatible — no availability guard is required.
 @MainActor
 public final class ScreenGuardWatermarkView: UIView {
-
     /// Changing this re-draws the watermark.
     ///
     /// The configuration is not `Equatable` (it carries a `timestampProvider` closure), so a change
@@ -161,7 +161,12 @@ public final class ScreenGuardWatermarkView: UIView {
 
     /// Unavailable. Use `init(configuration:)`.
     @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("ScreenGuardWatermarkView must be created programmatically") }
+    public required init?(coder: NSCoder) {
+        // Referenced so the parameter keeps its documented name: this view is not constructible from a
+        // nib, and the formatter renames an unreferenced parameter.
+        _ = coder
+        fatalError("ScreenGuardWatermarkView must be created programmatically")
+    }
 
     /// Forces a re-draw (e.g. to advance the timestamp).
     public func refresh() {
@@ -171,14 +176,23 @@ public final class ScreenGuardWatermarkView: UIView {
     /// Draws the tiles. Called by UIKit; not part of the package's API surface.
     ///
     /// - Parameter rect: The rect being drawn.
-    public override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext() else { return }
+    override public func draw(_ rect: CGRect) {
+        // Tiles are laid out over the full bounds, not over the passed rect: the watermark covers the
+        // whole view. The parameter is referenced so it keeps the name the emitted interface documents.
+        _ = rect
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return
+        }
         let origins = ScreenGuardWatermarkLayout.tileOrigins(in: bounds, tileSize: configuration.tileSize)
-        guard !origins.isEmpty else { return }
+        guard !origins.isEmpty else {
+            return
+        }
 
         let date = configuration.timestampProvider()
         let lines = configuration.tileLines(at: date)
-        guard !lines.isEmpty else { return }
+        guard !lines.isEmpty else {
+            return
+        }
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .left
@@ -187,7 +201,7 @@ public final class ScreenGuardWatermarkView: UIView {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: configuration.font,
             .foregroundColor: configuration.color.withAlphaComponent(configuration.opacity),
-            .paragraphStyle: paragraph
+            .paragraphStyle: paragraph,
         ]
 
         context.saveGState()
@@ -206,13 +220,13 @@ public final class ScreenGuardWatermarkView: UIView {
                 width: configuration.tileSize.width,
                 height: configuration.tileSize.height
             )
-            let string = lines.joined(separator: "\n") as NSString
-            let size = string.size(withAttributes: attributes)
+            let string = NSAttributedString(string: lines.joined(separator: "\n"), attributes: attributes)
+            let size = string.size()
             let drawOrigin = CGPoint(
                 x: textRect.midX - size.width / 2,
                 y: textRect.midY - size.height / 2
             )
-            string.draw(at: drawOrigin, withAttributes: attributes)
+            string.draw(at: drawOrigin)
             context.restoreGState()
         }
         context.restoreGState()

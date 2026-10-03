@@ -14,9 +14,8 @@ import UIKit
 ///
 /// The point is to be able to say *why* the recording path is unmeasurable, not merely that it was.
 enum ReplayKitProbe {
-
     @MainActor
-    static func run(window: UIWindow) async {
+    static func run(window _: UIWindow) async {
         let log = RunLog.shared
         let runID = Config.runID
         log.log("=== CaptureMatrix replaykit \(runID) ===")
@@ -87,7 +86,9 @@ enum ReplayKitProbe {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             var resumed = false
             let finish: () -> Void = {
-                if !resumed { resumed = true; continuation.resume() }
+                if !resumed {
+                    resumed = true; continuation.resume()
+                }
             }
             recorder.startRecording { error in
                 RunLog.shared.log("RK startRecording completion error=\(error?.localizedDescription ?? "none") "
@@ -127,22 +128,28 @@ enum ReplayKitProbe {
             switch type {
             case .video:
                 videoFrames += 1
-                if CMSampleBufferGetImageBuffer(sampleBuffer) == nil { nilImageBuffer += 1 }
-                else if videoFrames == 1 {
+                if CMSampleBufferGetImageBuffer(sampleBuffer) == nil {
+                    nilImageBuffer += 1
+                } else if videoFrames == 1 {
                     isFirstVideo = true
                     let buffer = CMSampleBufferGetImageBuffer(sampleBuffer)!
                     RunLog.shared.log("RK FIRST VIDEO FRAME \(CVPixelBufferGetWidth(buffer))x\(CVPixelBufferGetHeight(buffer)) "
                         + "format=\(CVPixelBufferGetPixelFormatType(buffer))")
                 }
-            case .audioApp: audioApp += 1
-            case .audioMic: audioMic += 1
-            @unknown default: break
+            case .audioApp:
+                audioApp += 1
+            case .audioMic:
+                audioMic += 1
+            @unknown default:
+                break
             }
         }
 
         func claim() -> Bool {
             lock.lock(); defer { lock.unlock() }
-            if claimed { return false }
+            if claimed {
+                return false
+            }
             claimed = true
             return true
         }

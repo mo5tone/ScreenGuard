@@ -19,7 +19,6 @@ import Foundation
 /// iOS 15-compatible — no availability guard is required.
 @MainActor
 public protocol ScreenGuardDelegate: AnyObject {
-
     /// Called for every detection event.
     ///
     /// - Parameters:

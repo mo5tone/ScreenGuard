@@ -22,12 +22,11 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import UIKit
 import os
+import UIKit
 
 /// Writes every probe line to the unified log *and* to a file the host script can collect.
 final class DemoLog: @unchecked Sendable {
-
     /// The process-wide log for the current run.
     static let shared = DemoLog()
 
@@ -79,7 +78,8 @@ final class DemoLog: @unchecked Sendable {
         guard JSONSerialization.isValidJSONObject(object),
               let data = try? JSONSerialization.data(
                   withJSONObject: object, options: [.prettyPrinted, .sortedKeys]
-              ) else {
+              )
+        else {
             log("ERROR: could not serialise \(name)")
             return nil
         }
@@ -129,7 +129,6 @@ final class DemoLog: @unchecked Sendable {
 
 /// The app-side capture read, and the sampling that turns it into per-region colour verdicts.
 enum AppSideReadback {
-
     /// One region's reading from one capture path.
     struct Reading {
         /// The region's stable name.
@@ -153,7 +152,9 @@ enum AppSideReadback {
         }
 
         /// `"r,g,b"` for the median.
-        var medianString: String { "\(median.r),\(median.g),\(median.b)" }
+        var medianString: String {
+            "\(median.r),\(median.g),\(median.b)"
+        }
     }
 
     /// What a sampled region reads, classified against the demo's two reference colours.
@@ -190,12 +191,16 @@ enum AppSideReadback {
     static func normalizedSRGB(_ image: CGImage) -> CGImage? {
         let width = image.width
         let height = image.height
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else {
+            return nil
+        }
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         guard let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
             space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        ) else {
+            return nil
+        }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()
     }
@@ -213,7 +218,9 @@ enum AppSideReadback {
             // afterScreenUpdates MUST be false. See this file's header.
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
         }
-        guard let cgImage = image.cgImage else { return nil }
+        guard let cgImage = image.cgImage else {
+            return nil
+        }
         return normalizedSRGB(cgImage)
     }
 
@@ -248,9 +255,13 @@ enum AppSideReadback {
 
         /// The RGB triple at `x`,`y`, or `nil` when out of range.
         func pixel(x: Int, y: Int) -> (r: Int, g: Int, b: Int)? {
-            guard x >= 0, y >= 0, x < width, y < height else { return nil }
+            guard x >= 0, y >= 0, x < width, y < height else {
+                return nil
+            }
             let offset = y * bytesPerRow + x * 4
-            guard offset + 3 < length else { return nil }
+            guard offset + 3 < length else {
+                return nil
+            }
             return (Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]))
         }
     }
@@ -277,14 +288,16 @@ enum AppSideReadback {
         let rect = region.bodyRect
         var pixels: [(Int, Int, Int)] = []
         pixels.reserveCapacity(columns * rows)
-        for row in 0..<rows {
+        for row in 0 ..< rows {
             // Sample at cell centres so both images land on comparable content.
             let fy = rect.minY + rect.height * (Double(row) + 0.5) / Double(rows)
-            for column in 0..<columns {
+            for column in 0 ..< columns {
                 let fx = rect.minX + rect.width * (Double(column) + 0.5) / Double(columns)
                 let x = min(bitmap.width - 1, max(0, Int(fx * Double(bitmap.width))))
                 let y = min(bitmap.height - 1, max(0, Int(fy * Double(bitmap.height))))
-                if let pixel = bitmap.pixel(x: x, y: y) { pixels.append(pixel) }
+                if let pixel = bitmap.pixel(x: x, y: y) {
+                    pixels.append(pixel)
+                }
             }
         }
 
@@ -321,9 +334,15 @@ enum AppSideReadback {
 
     /// Classifies a reading against the demo's reference colours.
     private static func classify(mean: (r: Double, g: Double, b: Double), maxChannel: Int) -> Verdict {
-        if distance(mean, DemoGeometry.sensitiveColour) <= tolerance { return .sensitive }
-        if distance(mean, DemoGeometry.sentinelColour) <= tolerance { return .sentinel }
-        if maxChannel < 32 { return .black }
+        if distance(mean, DemoGeometry.sensitiveColour) <= tolerance {
+            return .sensitive
+        }
+        if distance(mean, DemoGeometry.sentinelColour) <= tolerance {
+            return .sentinel
+        }
+        if maxChannel < 32 {
+            return .black
+        }
         return .other
     }
 
@@ -363,23 +382,29 @@ enum AppSideReadback {
         var total = 0
         var marked = 0
         var maxChannel = 0
-        for row in 0..<rows {
+        for row in 0 ..< rows {
             let fy = rect.minY + rect.height * (Double(row) + 0.5) / Double(rows)
-            for column in 0..<columns {
+            for column in 0 ..< columns {
                 let fx = rect.minX + rect.width * (Double(column) + 0.5) / Double(columns)
                 let x = min(bitmap.width - 1, max(0, Int(fx * Double(bitmap.width))))
                 let y = min(bitmap.height - 1, max(0, Int(fy * Double(bitmap.height))))
-                guard let pixel = bitmap.pixel(x: x, y: y) else { continue }
+                guard let pixel = bitmap.pixel(x: x, y: y) else {
+                    continue
+                }
                 total += 1
                 maxChannel = max(maxChannel, max(pixel.r, max(pixel.g, pixel.b)))
                 let delta = max(
                     abs(Double(pixel.r) - base.0),
                     max(abs(Double(pixel.g) - base.1), abs(Double(pixel.b) - base.2))
                 )
-                if delta > Double(threshold) { marked += 1 }
+                if delta > Double(threshold) {
+                    marked += 1
+                }
             }
         }
-        guard total > 0 else { return (0, 0, 0) }
+        guard total > 0 else {
+            return (0, 0, 0)
+        }
         return (Double(marked) / Double(total), total, maxChannel)
     }
 

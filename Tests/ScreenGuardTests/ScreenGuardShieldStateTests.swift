@@ -9,12 +9,11 @@
 //  is therefore skipped with a reason in `ScreenGuardDeviceOnlyTests.swift` — never silently dropped.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 @MainActor
 final class ScreenGuardShieldStateTests: XCTestCase {
-
     // MARK: - Disabled
 
     func testDisabledStrategyReportsThatItIsNotProtecting() {
@@ -172,7 +171,7 @@ final class ScreenGuardShieldStateTests: XCTestCase {
     /// Every transition out of every strategy must leave a consistent, non-lying state.
     func testEveryStrategyTransitionIsConsistent() {
         let strategies: [ScreenGuardNoLeakStrategy] = [
-            .disabled, .publicPreventsCaptureLayer, .privateSecureLayer
+            .disabled, .publicPreventsCaptureLayer, .privateSecureLayer,
         ]
         let shield = ScreenGuardShieldView(strategy: .disabled)
 
@@ -182,9 +181,11 @@ final class ScreenGuardShieldStateTests: XCTestCase {
             case .disabled:
                 XCTAssertEqual(shield.shieldMode, .disabled)
                 XCTAssertFalse(shield.isProtecting)
+
             case .publicPreventsCaptureLayer:
                 XCTAssertEqual(shield.shieldMode, .publicPreventsCaptureLayer)
                 XCTAssertTrue(shield.isProtecting)
+
             case .privateSecureLayer:
                 // Off by default: the fallback, and it is labelled.
                 XCTAssertEqual(shield.shieldMode, .detectionAndOverlayFallback)
@@ -199,7 +200,9 @@ final class ScreenGuardShieldStateTests: XCTestCase {
         var failures = 0
         shield.onProtectionFailure = { _ in failures += 1 }
 
-        for _ in 0..<5 { shield.apply(strategy: .publicPreventsCaptureLayer) }
+        for _ in 0 ..< 5 {
+            shield.apply(strategy: .publicPreventsCaptureLayer)
+        }
 
         XCTAssertTrue(shield.isProtecting)
         XCTAssertEqual(shield.shieldMode, .publicPreventsCaptureLayer)
@@ -222,7 +225,9 @@ final class ScreenGuardShieldStateTests: XCTestCase {
     /// `setNeedsContentRefresh()` is idempotent and safe before any content exists.
     func testSetNeedsContentRefreshIsSafeWithNoContent() {
         let shield = ScreenGuardShieldView(strategy: .publicPreventsCaptureLayer)
-        for _ in 0..<3 { shield.setNeedsContentRefresh() }
+        for _ in 0 ..< 3 {
+            shield.setNeedsContentRefresh()
+        }
         XCTAssertTrue(shield.isProtecting)
     }
 

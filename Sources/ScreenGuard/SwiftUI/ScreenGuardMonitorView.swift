@@ -24,7 +24,6 @@ import SwiftUI
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardMonitorView<Content: View>: View {
-
     /// The monitor to read, or `nil` to use `ScreenGuard.shared`.
     private let monitor: ScreenGuardMonitor?
 
@@ -55,7 +54,6 @@ public struct ScreenGuardMonitorView<Content: View>: View {
 
 /// The observing half, split out so `@ObservedObject` has a stable identity to attach to.
 private struct ScreenGuardMonitorObserver<Content: View>: View {
-
     @ObservedObject var monitor: ScreenGuardMonitor
     let content: (ScreenGuardState) -> Content
 

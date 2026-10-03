@@ -30,7 +30,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardCapability: String, CaseIterable, Equatable, Sendable {
-
     /// Screenshot **detection** — `UIApplication.userDidTakeScreenshotNotification`. §4 row 1.
     case screenshotDetection
 
@@ -75,7 +74,6 @@ public enum ScreenGuardCapability: String, CaseIterable, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardVerificationStatus: String, Equatable, Sendable {
-
     /// Demonstrated by measurement with a control band that rules out the obvious false positive.
     case measured
 
@@ -96,7 +94,6 @@ public enum ScreenGuardVerificationStatus: String, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardCapabilityStatus: Equatable, Sendable {
-
     /// The capability being described.
     public let capability: ScreenGuardCapability
 

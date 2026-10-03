@@ -22,7 +22,6 @@ import UIKit
 /// iOS 15-compatible — `userDidTakeScreenshotNotification` is iOS 7.0+ and not deprecated.
 @MainActor
 final class ScreenGuardScreenshotObserver {
-
     /// Called on the main actor when a screenshot is detected.
     var onScreenshot: (() -> Void)?
 
@@ -35,7 +34,9 @@ final class ScreenGuardScreenshotObserver {
 
     /// Begins observing. Idempotent.
     func start() {
-        guard !isObserving else { return }
+        guard !isObserving else {
+            return
+        }
         isObserving = true
         let token = NotificationCenter.default.addObserver(
             forName: UIApplication.userDidTakeScreenshotNotification,

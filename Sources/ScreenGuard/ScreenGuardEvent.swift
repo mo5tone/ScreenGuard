@@ -23,7 +23,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardCaptureState: String, Equatable, Sendable {
-
     /// The platform could not determine the state (iOS 17+ `.unspecified`; legacy `false`).
     case unspecified
 
@@ -43,7 +42,6 @@ public enum ScreenGuardCaptureState: String, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardDetectionSource: String, Equatable, Sendable {
-
     /// `UITraitCollection.sceneCaptureState` — iOS 17.0 and later only.
     case sceneCaptureState
 
@@ -65,7 +63,6 @@ public enum ScreenGuardDetectionSource: String, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardProtectionFailure: String, Equatable, Sendable {
-
     /// The private secure-layer canvas class was not found on this OS build, the private-API code is
     /// not compiled in, or the runtime opt-in was not granted. The shield is **not** protecting.
     /// See `docs/api-contract.md` §9.
@@ -94,10 +91,8 @@ public enum ScreenGuardProtectionFailure: String, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardEvent: Equatable, Sendable {
-
     /// What happened.
     public enum Kind: Equatable, Sendable {
-
         /// A screenshot was taken. Delivered **after** the fact — the image already exists.
         case screenshotTaken
 
@@ -149,7 +144,6 @@ public struct ScreenGuardEvent: Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardState: Equatable, Sendable {
-
     /// The most recently observed capture state.
     public var captureState: ScreenGuardCaptureState
 

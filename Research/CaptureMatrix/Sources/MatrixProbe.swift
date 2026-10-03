@@ -7,7 +7,6 @@ import UIKit
 /// The output contract is deliberately boring: one line per (path, band) with the sampled RGB and
 /// the verdict, plus a PNG per path. The evidence doc quotes those lines verbatim.
 enum MatrixProbe {
-
     @MainActor
     static func run(window: UIWindow) async {
         let runID = Config.runID
@@ -134,16 +133,23 @@ enum MatrixProbe {
     /// ReplayKit can hand back a frame transposed relative to the window. Rotating to the window's
     /// aspect ratio is what makes the band fractions line up with the same bands on screen.
     private static func orient(_ image: CGImage, toMatch size: CGSize) -> CGImage {
-        guard size.width > 0, size.height > 0 else { return image }
+        guard size.width > 0, size.height > 0 else {
+            return image
+        }
         let windowIsPortrait = size.height >= size.width
         let imageIsPortrait = image.height >= image.width
-        guard windowIsPortrait != imageIsPortrait else { return image }
+        guard windowIsPortrait != imageIsPortrait else {
+            return image
+        }
         RunLog.shared.log("NOTE rotating capture \(image.width)x\(image.height) to match portrait window")
         let width = image.height
         let height = image.width
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            return image
+        }
         context.translateBy(x: Double(width) / 2, y: Double(height) / 2)
         context.rotate(by: .pi / 2)
         context.draw(image, in: CGRect(x: -Double(image.width) / 2, y: -Double(image.height) / 2,

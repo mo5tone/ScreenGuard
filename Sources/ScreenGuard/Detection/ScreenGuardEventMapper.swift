@@ -18,7 +18,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardEventMapper {
-
     /// The event kind implied by a state transition, or `nil` when nothing should be emitted.
     ///
     /// Rules:
@@ -41,20 +40,25 @@ public enum ScreenGuardEventMapper {
         from previous: ScreenGuardCaptureState,
         to current: ScreenGuardCaptureState
     ) -> ScreenGuardEvent.Kind? {
-        guard previous != current else { return nil }
+        guard previous != current else {
+            return nil
+        }
 
         switch (previous, current) {
         case (_, .active):
             // Capture began (recording, mirroring or AirPlay — indistinguishable, §3.1.1).
             return .captureBegan
+
         case (.active, .inactive):
             // Capture genuinely ended.
             return .captureEnded
+
         case (.unspecified, .inactive),
              (.inactive, .unspecified),
              (.active, .unspecified):
             // Never claim an end we cannot substantiate.
             return nil
+
         case (.unspecified, .unspecified),
              (.inactive, .inactive):
             // Unreachable (guarded above) but listed so the switch is exhaustive without a `default`,
@@ -74,9 +78,14 @@ public enum ScreenGuardEventMapper {
     /// - Returns: The equivalent `ScreenGuardCaptureState`.
     public static func captureState(sceneCaptureStateRawValue: Int) -> ScreenGuardCaptureState {
         switch sceneCaptureStateRawValue {
-        case 1: return .inactive
-        case 2: return .active
-        default: return .unspecified
+        case 1:
+            .inactive
+
+        case 2:
+            .active
+
+        default:
+            .unspecified
         }
     }
 

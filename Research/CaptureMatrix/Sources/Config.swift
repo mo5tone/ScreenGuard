@@ -13,11 +13,15 @@ enum RunMode: String {
 }
 
 enum Config {
-    static var arguments: [String] { ProcessInfo.processInfo.arguments }
+    static var arguments: [String] {
+        ProcessInfo.processInfo.arguments
+    }
 
     static func value(for key: String) -> String? {
         let args = arguments
-        guard let index = args.firstIndex(of: key), index + 1 < args.count else { return nil }
+        guard let index = args.firstIndex(of: key), index + 1 < args.count else {
+            return nil
+        }
         return args[index + 1]
     }
 
@@ -25,5 +29,7 @@ enum Config {
         RunMode(rawValue: value(for: "-Mode") ?? "matrix") ?? .matrix
     }
 
-    static var runID: String { value(for: "-RunID") ?? "adhoc" }
+    static var runID: String {
+        value(for: "-RunID") ?? "adhoc"
+    }
 }

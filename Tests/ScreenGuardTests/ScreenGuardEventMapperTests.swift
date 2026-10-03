@@ -6,11 +6,10 @@
 //  the "event-type mapping from capture state" surface the package is required to test.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 final class ScreenGuardEventMapperTests: XCTestCase {
-
     // MARK: - Transition table
 
     /// Every (previous, current) pair, asserted explicitly. Exhaustive on purpose: a `default` in the
@@ -33,7 +32,7 @@ final class ScreenGuardEventMapperTests: XCTestCase {
             // not evidence that capture stopped.
             (.active, .unspecified, nil),
             (.unspecified, .inactive, nil),
-            (.inactive, .unspecified, nil)
+            (.inactive, .unspecified, nil),
         ]
 
         for (from, to, expected) in cases {
@@ -76,7 +75,9 @@ final class ScreenGuardEventMapperTests: XCTestCase {
         var state = ScreenGuardCaptureState.inactive
         var kinds: [ScreenGuardEvent.Kind] = []
         for next in [ScreenGuardCaptureState.active, .inactive, .active] {
-            if let kind = ScreenGuardEventMapper.eventKind(from: state, to: next) { kinds.append(kind) }
+            if let kind = ScreenGuardEventMapper.eventKind(from: state, to: next) {
+                kinds.append(kind)
+            }
             state = next
         }
         XCTAssertEqual(kinds, [.captureBegan, .captureEnded, .captureBegan])

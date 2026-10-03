@@ -19,7 +19,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardWatermarkLayout: Equatable, Sendable {
-
     /// Top-left origins of every tile needed to cover `bounds`, including the partial tiles on the
     /// right and bottom edges.
     ///
@@ -44,9 +43,15 @@ public struct ScreenGuardWatermarkLayout: Equatable, Sendable {
     ///   - tileSize: The tile pitch, in points.
     /// - Returns: The tile origins, in row-major order.
     public static func tileOrigins(in bounds: CGRect, tileSize: CGSize) -> [CGPoint] {
-        guard !bounds.isNull, !bounds.isInfinite else { return [] }
-        guard bounds.maxX > bounds.minX, bounds.maxY > bounds.minY else { return [] }
-        guard tileSize.width > 0, tileSize.height > 0 else { return [] }
+        guard !bounds.isNull, !bounds.isInfinite else {
+            return []
+        }
+        guard bounds.maxX > bounds.minX, bounds.maxY > bounds.minY else {
+            return []
+        }
+        guard tileSize.width > 0, tileSize.height > 0 else {
+            return []
+        }
 
         let columns = Int(ceil(bounds.width / tileSize.width))
         let rows = Int(ceil(bounds.height / tileSize.height))
@@ -54,8 +59,8 @@ public struct ScreenGuardWatermarkLayout: Equatable, Sendable {
         var origins: [CGPoint] = []
         origins.reserveCapacity(columns * rows)
 
-        for row in 0..<rows {
-            for column in 0..<columns {
+        for row in 0 ..< rows {
+            for column in 0 ..< columns {
                 origins.append(
                     CGPoint(
                         x: bounds.minX + CGFloat(column) * tileSize.width,

@@ -5,11 +5,10 @@
 //  Watermark tile geometry and placement. Pure arithmetic — no window, no screen, no rendering.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 final class ScreenGuardWatermarkLayoutTests: XCTestCase {
-
     private let tile = CGSize(width: 100, height: 50)
 
     // MARK: - Coverage
@@ -53,12 +52,12 @@ final class ScreenGuardWatermarkLayoutTests: XCTestCase {
         let bounds = CGRect(x: 0, y: 0, width: 300, height: 100)
         let origins = ScreenGuardWatermarkLayout.tileOrigins(in: bounds, tileSize: tile)
         XCTAssertEqual(origins, [
-            CGPoint(x: 0, y: 0),
+            .zero,
             CGPoint(x: 100, y: 0),
             CGPoint(x: 200, y: 0),
             CGPoint(x: 0, y: 50),
             CGPoint(x: 100, y: 50),
-            CGPoint(x: 200, y: 50)
+            CGPoint(x: 200, y: 50),
         ])
     }
 
@@ -152,11 +151,14 @@ final class ScreenGuardWatermarkLayoutTests: XCTestCase {
     /// A non-positive pitch has no meaningful tiling and must not trap on division or `Int(ceil(...))`.
     func testNonPositiveTileSizeYieldsNoTiles() {
         let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
-        for size in [CGSize(width: 0, height: 50),
-                     CGSize(width: 100, height: 0),
-                     CGSize(width: -100, height: 50),
-                     CGSize(width: 100, height: -50),
-                     .zero] {
+        let sizes: [CGSize] = [
+            CGSize(width: 0, height: 50),
+            CGSize(width: 100, height: 0),
+            CGSize(width: -100, height: 50),
+            CGSize(width: 100, height: -50),
+            .zero,
+        ]
+        for size in sizes {
             XCTAssertEqual(
                 ScreenGuardWatermarkLayout.tileOrigins(in: bounds, tileSize: size),
                 [],
@@ -181,9 +183,8 @@ final class ScreenGuardWatermarkLayoutTests: XCTestCase {
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let configuration = ScreenGuardWatermarkConfiguration(
             text: "CONFIDENTIAL",
-            secondaryText: "session 4417",
-            timestampProvider: { date }
-        )
+            secondaryText: "session 4417"
+        ) { date }
         let lines = configuration.tileLines(at: date)
         XCTAssertEqual(lines.count, 3)
         XCTAssertEqual(lines[0], "CONFIDENTIAL")
@@ -214,14 +215,13 @@ final class ScreenGuardWatermarkLayoutTests: XCTestCase {
     /// The time zone is pinned rather than inherited: an assertion that depends on the machine's zone
     /// would pass in UTC and fail in Asia/Shanghai, which is exactly the class of test that erodes
     /// trust in a suite.
-    func testTimestampIsDeterministicGivenTheInjectedDateAndZone() {
+    func testTimestampIsDeterministicGivenTheInjectedDateAndZone() throws {
         let date = Date(timeIntervalSince1970: 1_700_000_000)
-        let configuration = ScreenGuardWatermarkConfiguration(
+        let configuration = try ScreenGuardWatermarkConfiguration(
             text: "CONFIDENTIAL",
             timestampFormat: "yyyy-MM-dd HH:mm:ss",
-            timeZone: TimeZone(identifier: "UTC")!,
-            timestampProvider: { date }
-        )
+            timeZone: XCTUnwrap(TimeZone(identifier: "UTC"))
+        ) { date }
         XCTAssertEqual(configuration.tileLines(at: date).last, "2023-11-14 22:13:20")
         XCTAssertEqual(
             configuration.tileLines(at: date),
@@ -231,13 +231,13 @@ final class ScreenGuardWatermarkLayoutTests: XCTestCase {
 
     /// The same instant renders differently per zone — the property that makes the recorded zone
     /// forensically meaningful rather than decorative.
-    func testTimeZoneChangesTheRenderedTimestamp() {
+    func testTimeZoneChangesTheRenderedTimestamp() throws {
         let date = Date(timeIntervalSince1970: 1_700_000_000)
-        let utc = ScreenGuardWatermarkConfiguration(
-            text: "C", timestampFormat: "yyyy-MM-dd", timeZone: TimeZone(identifier: "UTC")!
+        let utc = try ScreenGuardWatermarkConfiguration(
+            text: "C", timestampFormat: "yyyy-MM-dd", timeZone: XCTUnwrap(TimeZone(identifier: "UTC"))
         )
-        let shanghai = ScreenGuardWatermarkConfiguration(
-            text: "C", timestampFormat: "yyyy-MM-dd", timeZone: TimeZone(identifier: "Asia/Shanghai")!
+        let shanghai = try ScreenGuardWatermarkConfiguration(
+            text: "C", timestampFormat: "yyyy-MM-dd", timeZone: XCTUnwrap(TimeZone(identifier: "Asia/Shanghai"))
         )
         XCTAssertEqual(utc.tileLines(at: date).last, "2023-11-14")
         XCTAssertEqual(shanghai.tileLines(at: date).last, "2023-11-15")

@@ -13,7 +13,6 @@ import UIKit
 ///
 /// This is a diagnostic, not evidence of capture protection.
 enum RenderSanityProbe {
-
     @MainActor
     static func run(window: UIWindow) async {
         let log = RunLog.shared
@@ -30,7 +29,9 @@ enum RenderSanityProbe {
         log.log("RENDER-SANITY holding \(Int(hold))s for the host screenshot; cases top-to-bottom:")
 
         for (index, caseView) in stack.arrangedSubviews.enumerated() {
-            guard let caseView = caseView as? SanityCaseView else { continue }
+            guard let caseView = caseView as? SanityCaseView else {
+                continue
+            }
             log.log("RENDER-SANITY case \(index) \(caseView.label) | expectedOnScreen=\(caseView.expectedRGBString) "
                 + "| layerFrames=\(caseView.layerFrameSummary) enqueued=\(caseView.enqueueCount) "
                 + "rendererStatus=\(caseView.rendererStatus) preventsCapture=\(caseView.preventsCapture)")
@@ -51,7 +52,9 @@ enum RenderSanityProbe {
                 return stack
             }
             for subview in view.subviews {
-                if let found = search(subview) { return found }
+                if let found = search(subview) {
+                    return found
+                }
             }
             return nil
         }
@@ -71,7 +74,7 @@ final class SanityCaseView: UIView {
     /// the flag itself, versus the flag being set after the layer is already in a tree.
     init(label: String, content: UIColor, backing: UIColor, preventsCapture: Bool, applyBeforeAdd: Bool) {
         self.label = label
-        self.contentColor = content
+        contentColor = content
         self.preventsCapture = preventsCapture
         super.init(frame: .zero)
         backgroundColor = backing
@@ -89,7 +92,9 @@ final class SanityCaseView: UIView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 
     private func addLabel() {
         let text = UILabel()
@@ -108,15 +113,24 @@ final class SanityCaseView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         displayLayer.frame = bounds
-        guard bounds.width > 1, bounds.height > 1 else { return }
+        guard bounds.width > 1, bounds.height > 1 else {
+            return
+        }
         guard let image = CMSampleBufferFactory.solidImage(color: contentColor, size: 64),
-              let buffer = CMSampleBufferFactory.make(from: image) else { return }
+              let buffer = CMSampleBufferFactory.make(from: image)
+        else {
+            return
+        }
         if #available(iOS 18.0, *) {
             let renderer = displayLayer.sampleBufferRenderer
-            if renderer.status == .failed { renderer.flush() }
+            if renderer.status == .failed {
+                renderer.flush()
+            }
             renderer.enqueue(buffer)
         } else {
-            if displayLayer.status == .failed { displayLayer.flush() }
+            if displayLayer.status == .failed {
+                displayLayer.flush()
+            }
             displayLayer.enqueue(buffer)
         }
         enqueueCount += 1
@@ -133,14 +147,20 @@ final class SanityCaseView: UIView {
     }
 
     var rendererStatus: String {
-        let status: AVQueuedSampleBufferRenderingStatus
-        if #available(iOS 18.0, *) { status = displayLayer.sampleBufferRenderer.status }
-        else { status = displayLayer.status }
+        let status: AVQueuedSampleBufferRenderingStatus = if #available(iOS 18.0, *) {
+            displayLayer.sampleBufferRenderer.status
+        } else {
+            displayLayer.status
+        }
         switch status {
-        case .unknown: return "unknown"
-        case .rendering: return "rendering"
-        case .failed: return "failed"
-        @unknown default: return "?"
+        case .unknown:
+            return "unknown"
+        case .rendering:
+            return "rendering"
+        case .failed:
+            return "failed"
+        @unknown default:
+            return "?"
         }
     }
 }
@@ -156,7 +176,7 @@ struct RenderSanityView: View {
 }
 
 private struct SanityStackRepresentable: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIStackView {
+    func makeUIView(context _: Context) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .vertical
         stack.distribution = .fillEqually
@@ -176,5 +196,5 @@ private struct SanityStackRepresentable: UIViewRepresentable {
         return stack
     }
 
-    func updateUIView(_ uiView: UIStackView, context: Context) {}
+    func updateUIView(_: UIStackView, context _: Context) {}
 }

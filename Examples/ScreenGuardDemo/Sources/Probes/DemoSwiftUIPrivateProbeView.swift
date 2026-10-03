@@ -32,14 +32,13 @@
 //  "never painted", which is the same discriminator the no-leak page uses.
 //
 
+import ScreenGuard
 import SwiftUI
 import UIKit
-import ScreenGuard
 
 /// The two-region SwiftUI-route page.
 @MainActor
 final class DemoSwiftUIPrivateProbeView: UIView {
-
     private let runID: String
     private let privateOptIn: Bool
 
@@ -71,7 +70,9 @@ final class DemoSwiftUIPrivateProbeView: UIView {
 
     /// Unavailable. Use `init(runID:privateOptIn:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoSwiftUIPrivateProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoSwiftUIPrivateProbeView must be created programmatically")
+    }
 
     // MARK: - Construction
 
@@ -112,7 +113,7 @@ final class DemoSwiftUIPrivateProbeView: UIView {
     }
 
     /// Hosts a SwiftUI view inside a UIKit region container.
-    private func host<V: View>(_ view: V, in container: UIView) {
+    private func host(_ view: some View, in container: UIView) {
         let controller = UIHostingController(rootView: view)
         controller.view.backgroundColor = .clear
         retainedHosts.append(controller)
@@ -129,7 +130,7 @@ final class DemoSwiftUIPrivateProbeView: UIView {
 
     /// Builds one labelled region container.
     private func regionContainer(
-        _ region: DemoGeometry.Region,
+        _: DemoGeometry.Region,
         title: String,
         detail: String
     ) -> UIView {
@@ -158,7 +159,9 @@ final class DemoSwiftUIPrivateProbeView: UIView {
     /// Runs the probe once the view is in a window.
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, pass == 0 else { return }
+        guard window != nil, pass == 0 else {
+            return
+        }
 
         let log = DemoLog.shared
         log.log("=== ScreenGuardDemo SwiftUI-private probe \(runID) ===")
@@ -202,7 +205,8 @@ final class DemoSwiftUIPrivateProbeView: UIView {
         layoutIfNeeded()
 
         guard let image = AppSideReadback.appRender(window: window),
-              let bitmap = AppSideReadback.Bitmap(image: image) else {
+              let bitmap = AppSideReadback.Bitmap(image: image)
+        else {
             log.log("PROBE pass \(pass): the app-side read produced no readable bitmap")
             return
         }
@@ -236,7 +240,9 @@ final class DemoSwiftUIPrivateProbeView: UIView {
     private func shieldsInTheHierarchy() -> [ScreenGuardShieldView] {
         var found: [ScreenGuardShieldView] = []
         func walk(_ view: UIView) {
-            if let shield = view as? ScreenGuardShieldView { found.append(shield) }
+            if let shield = view as? ScreenGuardShieldView {
+                found.append(shield)
+            }
             view.subviews.forEach(walk)
         }
         walk(self)
@@ -251,7 +257,9 @@ final class DemoSwiftUIPrivateProbeView: UIView {
     private static func hostsRenderedContent(_ shield: ScreenGuardShieldView) -> Bool {
         var found = false
         func walk(_ view: UIView) {
-            guard !found else { return }
+            guard !found else {
+                return
+            }
             if let imageView = view as? UIImageView, imageView.image != nil, !imageView.isHidden {
                 found = true
                 return
@@ -342,7 +350,6 @@ final class DemoSwiftUIPrivateProbeView: UIView {
 /// `Color(uiColor:)` rather than `Color(red:green:blue:)` so the SwiftUI card and the UIKit card are
 /// the *same* colour object; the pixel check compares against one reference value for both regions.
 struct DemoSensitiveSwiftUICard: View {
-
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color(uiColor: DemoGeometry.sensitiveColour)

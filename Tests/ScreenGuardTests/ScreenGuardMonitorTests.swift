@@ -8,16 +8,16 @@
 //  device-pending and is skipped with an explicit reason in `ScreenGuardDeviceOnlyTests.swift`.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 @MainActor
 final class ScreenGuardMonitorTests: XCTestCase {
-
     /// Collects events through the delegate seam.
     private final class Recorder: ScreenGuardDelegate {
         var events: [ScreenGuardEvent] = []
-        func screenGuard(_ monitor: ScreenGuardMonitor, didDetect event: ScreenGuardEvent) {
+
+        func screenGuard(_: ScreenGuardMonitor, didDetect event: ScreenGuardEvent) {
             events.append(event)
         }
     }
@@ -55,12 +55,12 @@ final class ScreenGuardMonitorTests: XCTestCase {
     /// The monitor's `deinit` must not require manual cleanup, and a monitor deallocated while
     /// running must not leave observers behind. If it did, this would leak and eventually crash.
     func testDeallocatingARunningMonitorIsSafe() {
-        for _ in 0..<20 {
+        for _ in 0 ..< 20 {
             let monitor = ScreenGuardMonitor()
             monitor.start()
             monitor.stop()
         }
-        for _ in 0..<20 {
+        for _ in 0 ..< 20 {
             let monitor = ScreenGuardMonitor()
             monitor.start()
             _ = monitor
@@ -104,9 +104,10 @@ final class ScreenGuardMonitorTests: XCTestCase {
             var shield: ScreenGuardAppSwitcherShield?
             var window: UIWindow?
             DispatchQueue.main.sync {
-                window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
+                let keyWindow = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
+                window = keyWindow
                 shield = ScreenGuardAppSwitcherShield()
-                shield?.install(on: window!)
+                shield?.install(on: keyWindow)
             }
             shield = nil
             window = nil
@@ -162,7 +163,7 @@ final class ScreenGuardMonitorTests: XCTestCase {
     func testSharedMonitorIsASingletonAndStartsIdempotently() {
         let first = ScreenGuard.start()
         let second = ScreenGuard.start()
-        XCTAssertTrue(first === second, "ScreenGuard.shared must be a single monitor")
+        XCTAssertIdentical(first, second, "ScreenGuard.shared must be a single monitor")
         ScreenGuard.stop()
         XCTAssertFalse(first.isMonitoring)
     }
@@ -171,7 +172,7 @@ final class ScreenGuardMonitorTests: XCTestCase {
     func testStartWithDelegateInstallsIt() {
         let recorder = Recorder()
         let monitor = ScreenGuard.start(delegate: recorder)
-        XCTAssertTrue(monitor === ScreenGuard.shared)
+        XCTAssertIdentical(monitor, ScreenGuard.shared)
         XCTAssertNotNil(monitor.delegate)
         ScreenGuard.stop()
     }
@@ -180,11 +181,15 @@ final class ScreenGuardMonitorTests: XCTestCase {
 
     /// The delegate is the first seam, and the closure runs after it — the documented order.
     func testDelegateRunsBeforeTheClosureSeam() {
-        /// Records into a shared, externally-owned list so both seams can be compared in order.
+        // Records into a shared, externally-owned list so both seams can be compared in order.
         final class OrderRecorder: ScreenGuardDelegate {
             let order: OrderList
-            init(order: OrderList) { self.order = order }
-            func screenGuard(_ monitor: ScreenGuardMonitor, didDetect event: ScreenGuardEvent) {
+
+            init(order: OrderList) {
+                self.order = order
+            }
+
+            func screenGuard(_: ScreenGuardMonitor, didDetect _: ScreenGuardEvent) {
                 order.values.append("delegate")
             }
         }
@@ -225,7 +230,7 @@ final class ScreenGuardMonitorTests: XCTestCase {
 
         XCTAssertEqual(events.map(\.kind), [
             .protectionDegraded(reason: .privateSecureLayerUnavailable),
-            .protectionDegraded(reason: .privateSecureLayerSwapFailed)
+            .protectionDegraded(reason: .privateSecureLayerSwapFailed),
         ])
     }
 
@@ -249,7 +254,7 @@ final class ScreenGuardMonitorTests: XCTestCase {
             .screenshotTaken,
             .captureBegan,
             .captureEnded,
-            .protectionDegraded(reason: .privateSecureLayerUnavailable)
+            .protectionDegraded(reason: .privateSecureLayerUnavailable),
         ]
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         for kind in kinds {

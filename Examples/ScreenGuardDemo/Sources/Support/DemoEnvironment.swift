@@ -23,7 +23,6 @@ import Foundation
 
 /// The environment this build runs in, and what that permits.
 enum DemoEnvironment {
-
     /// Whether this process is running on a Simulator.
     static var isSimulator: Bool {
         #if targetEnvironment(simulator)
@@ -34,7 +33,9 @@ enum DemoEnvironment {
     }
 
     /// A short name for the environment, for the banner.
-    static var name: String { isSimulator ? "Simulator" : "Device" }
+    static var name: String {
+        isSimulator ? "Simulator" : "Device"
+    }
 
     /// How far a user can get for one capability, here and now.
     enum Reach {
@@ -66,7 +67,9 @@ enum DemoEnvironment {
         case publicPath
 
         /// Stable identity.
-        public var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
     }
 
     /// How far a user can get for `capability` in this environment.
@@ -74,35 +77,34 @@ enum DemoEnvironment {
     /// Each answer is tied to a measurement recorded in `docs/TOOLING.md`, not to a guess.
     static func reach(of capability: Capability) -> Reach {
         switch capability {
-
         case .noLeak, .watermark:
             // The app-side read (`drawHierarchy(afterScreenUpdates: false)`) is available in both
             // environments and is the *same* read `Scripts/verify_capture.sh` grades
             // (`docs/TOOLING.md` §2). So the user can produce real evidence here, with a button.
-            return .verifiable
+            .verifiable
 
         case .publicPath:
             // `preventsCapture = true` makes the layer paint nothing at all on a Simulator,
             // including on screen (`docs/TOOLING.md` §7.1). "Absent from the capture" and "absent
             // from the screen" are indistinguishable there, so there is no result to look at.
-            return isSimulator ? .deviceRequired : .verifiable
+            isSimulator ? .deviceRequired : .verifiable
 
         case .screenshotDetection:
             // A real screenshot needs the side and volume buttons together, and the Simulator has no
             // volume button. The app can post a synthetic notification instead — which proves the
             // wiring and nothing else.
-            return isSimulator ? .synthetic : .verifiable
+            isSimulator ? .synthetic : .verifiable
 
         case .recording:
             // `RPScreenRecorder.startCapture` reports `isAvailable = true` and fires its completion
             // with no error, then delivers zero callbacks (`docs/TOOLING.md` §7.2).
-            return isSimulator ? .deviceRequired : .verifiable
+            isSimulator ? .deviceRequired : .verifiable
 
         case .appSwitcherCover:
             // The cover installs and engages on a Simulator, but the snapshot it protects lands in a
             // proprietary KTX variant that neither ImageMagick nor ffmpeg can decode, so its effect
             // cannot be read here.
-            return isSimulator ? .deviceRequired : .verifiable
+            isSimulator ? .deviceRequired : .verifiable
         }
     }
 
@@ -111,7 +113,9 @@ enum DemoEnvironment {
     /// - Parameter capability: The capability to explain.
     /// - Returns: The reason, or an empty string when there is nothing to explain.
     static func limitation(of capability: Capability) -> String {
-        guard reach(of: capability) != .verifiable else { return "" }
+        guard reach(of: capability) != .verifiable else {
+            return ""
+        }
         switch capability {
         case .noLeak, .watermark:
             return ""
@@ -138,5 +142,7 @@ enum DemoEnvironment {
     }
 
     /// The total number of capabilities the demo exposes.
-    static var totalCount: Int { Capability.allCases.count }
+    static var totalCount: Int {
+        Capability.allCases.count
+    }
 }

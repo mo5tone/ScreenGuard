@@ -41,7 +41,6 @@ import UIKit
 /// iOS 15-compatible — no availability guard is required.
 @MainActor
 open class ScreenGuardSecureTextField: UITextField {
-
     // MARK: - Secure entry
 
     /// Enforced `true`. Assigning `false` is ignored; use a plain `UITextField` if you need that.
@@ -50,7 +49,7 @@ open class ScreenGuardSecureTextField: UITextField {
     /// protection off is exactly the "silent failure" this package is written to avoid. The refusal is
     /// recorded in `refusedInsecureEntryAttempts` so a caller (and the package's own tests) can prove
     /// the assignment did not take effect, instead of having to trust it.
-    public override var isSecureTextEntry: Bool {
+    override public var isSecureTextEntry: Bool {
         get { super.isSecureTextEntry }
         set {
             guard newValue else {
@@ -97,7 +96,7 @@ open class ScreenGuardSecureTextField: UITextField {
     /// Creates a hardened secure field.
     ///
     /// - Parameter frame: The initial frame.
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
     }
@@ -128,7 +127,8 @@ open class ScreenGuardSecureTextField: UITextField {
         )
     }
 
-    @objc private func handleTextDidChange() {
+    @objc
+    private func handleTextDidChange() {
         onTextChanged?(text ?? "")
     }
 
@@ -140,8 +140,10 @@ open class ScreenGuardSecureTextField: UITextField {
     ///   - action: The action being queried.
     ///   - sender: The sender of the action.
     /// - Returns: `false` for editing actions when copy protection is on.
-    public override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        guard isCopyProtected else { return super.canPerformAction(action, withSender: sender) }
+    override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        guard isCopyProtected else {
+            return super.canPerformAction(action, withSender: sender)
+        }
         return false
     }
 }

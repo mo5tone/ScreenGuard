@@ -36,15 +36,11 @@ import Foundation
 /// Not actor-isolated by design — see the file header. Only `invalidate()`'s trait teardown requires
 /// the main thread, and it enforces that itself.
 final class ScreenGuardObserverTokenStore {
-
     /// NotificationCenter tokens. Removal is thread-safe.
     private var notificationTokens: [NSObjectProtocol] = []
 
     /// Main-actor-isolated teardown work, run on deallocation.
     private var mainActorTeardown: [() -> Void] = []
-
-    /// Creates an empty store.
-    init() {}
 
     /// Registers a `NotificationCenter` token for removal on deallocation.
     ///
@@ -77,20 +73,26 @@ final class ScreenGuardObserverTokenStore {
 
         let teardown = mainActorTeardown
         mainActorTeardown.removeAll()
-        guard !teardown.isEmpty else { return }
+        guard !teardown.isEmpty else {
+            return
+        }
 
         if Thread.isMainThread {
             // Already on the main actor — `assumeIsolated` is valid here, and this is the only place
             // it is used.
             MainActor.assumeIsolated {
-                for work in teardown { work() }
+                for work in teardown {
+                    work()
+                }
             }
         } else {
             // Hop without blocking the releasing thread. The work captures its own references, so
             // nothing dangles.
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
-                    for work in teardown { work() }
+                    for work in teardown {
+                        work()
+                    }
                 }
             }
         }

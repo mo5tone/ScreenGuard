@@ -1,0 +1,104 @@
+# =============================================================================================
+# SwiftLint configuration — the blocking style gate for the shipped library and its tests.
+#
+#   mise run lint       -> swiftlint lint --strict Sources Tests    (BLOCKING; must be 0 violations)
+#   mise run lint:demo  -> swiftlint lint Examples Research         (ADVISORY debt tracker)
+#
+# SCOPE — why this file has no `included:`
+#   Measured with the pinned SwiftLint 0.65.1: when `included:` is present, the paths passed on the
+#   command line are IGNORED. `included: [Sources, Tests]` would therefore silently redirect
+#   `mise run lint:demo` onto the clean library and stop reporting demo/research debt, and
+#   `included:` with all four directories would make the blocking gate fail on deferred demo debt.
+#   `excluded:` does not behave that way (verified), so scope comes from the task's paths and this
+#   file only excludes build output.
+#
+# RULES
+#   `opt_in_rules: all` opts in to every rule SwiftLint ships disabled by default. The rules that are
+#   wrong for THIS codebase are listed in `disabled_rules` below, each with the concrete reason.
+#   Nothing is disabled to make the gate pass: every violation belonging to an enabled rule was
+#   fixed in Sources/ScreenGuard and Tests/ScreenGuardTests.
+# =============================================================================================
+
+strict: true
+
+opt_in_rules:
+  - all
+
+excluded:
+  - .build
+  - .swiftpm
+  - Research/CaptureMatrix/Derived
+
+disabled_rules:
+  # -------------------------------------------------------------------------------------------
+  # 1. Rules SwiftFormat contradicts — the formatter owns layout, so these cannot be satisfied
+  #    at the same time as `mise run format:check`.
+  # -------------------------------------------------------------------------------------------
+  - contrasted_opening_brace        # demands `{` on its own line; SwiftFormat's default `braces` rule puts it on the same line.
+  - indentation_width               # demands a fixed 4-space indent; SwiftFormat aligns wrapped continuations to the opening delimiter.
+  - multiline_arguments             # demands all-on-one-line or one-per-line; SwiftFormat packs wrapped arguments to the line width.
+  - multiline_call_arguments        # same conflict, call side.
+
+  # -------------------------------------------------------------------------------------------
+  # 2. Contradicted by another SwiftLint rule that this codebase satisfies.
+  # -------------------------------------------------------------------------------------------
+  - no_extension_access_modifier    # forbids `public extension X`, which SwiftLint's own DEFAULT rule `extension_access_modifier` requires.
+
+  # -------------------------------------------------------------------------------------------
+  # 3. About a test framework this package does not use.
+  # -------------------------------------------------------------------------------------------
+  - prefer_nimble                   # the suite is XCTest by design (docs/TOOLING.md §9); the package has zero third-party dependencies.
+
+  # -------------------------------------------------------------------------------------------
+  # 4. Remedying these would change the published API or documented behaviour.
+  # -------------------------------------------------------------------------------------------
+  - incompatible_concurrency_annotation  # its fix is @preconcurrency on OUR public declarations, changing the surface docs/api-contract.md §6 pins.
+  - sorted_enum_cases               # case order is observable: CaseIterable order follows the capability table in docs/api-contract.md §3/§5.
+  - file_name                       # the two non-matching names are cited by docs/api-contract.md; renaming them would create doc drift.
+
+  # -------------------------------------------------------------------------------------------
+  # 5. Remedying these is pure noise in this codebase (hit counts are pre-configuration).
+  # -------------------------------------------------------------------------------------------
+  - explicit_type_interface         # 333 hits; inference is the house style and every PUBLIC type is explicit and contract-pinned.
+  - explicit_acl                    # 384 hits; explicitly writing `internal` adds no information to Swift's default.
+  - explicit_top_level_acl          # 46 hits; same.
+  - required_deinit                 # 40 hits; `deinit` is declared only where teardown is real, not as an empty formality.
+  - explicit_enum_raw_value         # 62 hits; a String-backed case's raw value IS its name, and repeating it creates a drift point.
+  - one_declaration_per_file        # 40 hits; a type and its small supporting types belong in one file, bounded by file_length.
+  - type_contents_order             # 55 hits; member order here is deliberate (public surface first, then marked sections).
+  - file_types_order                # 13 hits; same reason.
+  - no_magic_numbers                # 16 hits; this library is pixel mathematics — tile pitch and sampling offsets are geometry, not magic.
+  - object_literal                  # 7 hits; it prefers Xcode-only #colorLiteral tokens, which are invisible in review, diffs and CI.
+  - no_grouping_extension           # 2 hits; grouping a type's API into same-file extensions is how this codebase stays navigable.
+
+  # -------------------------------------------------------------------------------------------
+  # 6. Test-support rules that cannot coexist with splitting the test suites across files
+  #    (file_length / type_body_length). Swift private is FILE-scoped, so a fixture shared by tests
+  #    in two files must be internal, which is exactly what these two rules forbid.
+  # -------------------------------------------------------------------------------------------
+  - test_case_accessibility         # requires non-test members of an XCTestCase to be private; the shared fixtures are internal by necessity.
+  - discouraged_default_parameter   # 4 hits, all test fixtures (makeWindow(width:height:)); not API, and the defaults keep ~25 call sites readable.
+
+# ---------------------------------------------------------------------------------------------
+# Rule configuration (not disabling). Each change is here because the default is wrong for this
+# codebase, not because the gate needed to pass.
+# ---------------------------------------------------------------------------------------------
+
+# Pixel and matrix mathematics: `x`, `y`, `r`, `g`, `b`, `a`, `dx`, `dy` are the domain's
+# vocabulary. The default 3-character minimum would rename them to something less accurate;
+# max_length keeps its default so genuinely unreadable names still fail.
+identifier_name:
+  min_length: 1
+
+# SwiftFormat's `trailingCommas` rule (enabled by default) writes a trailing comma in multiline
+# collections, while this rule's default FORBIDS one — formatter and linter cannot both be satisfied.
+# `mandatory_comma: true` makes the rule agree with the formatter instead of fighting it.
+trailing_comma:
+  mandatory_comma: true
+
+# RGBA / coordinate tuples: the 15 hits are 3- and 4-member pixel tuples in tests
+# (`(red:green:blue:alpha:)`, `(x:y:)`). Named tuple members keep those readable; the limit is
+# raised only past the domain's arity, so a genuinely unwieldy tuple still fails.
+large_tuple:
+  warning: 4
+  error: 5

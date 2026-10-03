@@ -64,7 +64,6 @@ import UIKit
 ///   security guarantee. Read `docs/api-contract.md` §9 before enabling.
 @MainActor
 final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging {
-
     /// The private class-name fragment matched at runtime. The literal lives in this file and
     /// nowhere else, so excluding this file removes it from the binary.
     private static let canvasClassNameFragment = "_UITextLayoutCanvasView"
@@ -74,7 +73,9 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
     /// Naming `ScreenGuardNoLeakStrategy.privateSecureLayer` is not sufficient on its own: the caller
     /// must also set `ScreenGuard.PrivateAPI.isEnabled`. Two explicit acts are required for a private
     /// API, and the default posture is "off".
-    private static var isOptedIn: Bool { ScreenGuard.PrivateAPI.isEnabled }
+    private static var isOptedIn: Bool {
+        ScreenGuard.PrivateAPI.isEnabled
+    }
 
     // MARK: - Instance state
 
@@ -125,26 +126,26 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
             field.leadingAnchor.constraint(equalTo: host.leadingAnchor),
             field.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             field.topAnchor.constraint(equalTo: host.topAnchor),
-            field.bottomAnchor.constraint(equalTo: host.bottomAnchor)
+            field.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
         host.layoutIfNeeded()
 
-        guard let canvas = Self.findCanvas(in: field) else {
+        guard let locatedCanvas = Self.findCanvas(in: field) else {
             // The private class name is gone on this OS build. Do NOT claim protection.
             field.removeFromSuperview()
             failure = .privateSecureLayerUnavailable
             return false
         }
 
-        let displaced = canvas.layer
+        let displaced = locatedCanvas.layer
         let hostLayer = host.layer
         // The measured sequence, reproduced exactly: park the protected layer in the canvas, toggle
         // secure entry so UIKit rebuilds its exclusion bookkeeping around it, then put the canvas's own
         // layer back. See docs/evidence/capability-matrix.md §3 row 4.
-        canvas.setValue(hostLayer, forKey: "layer")
+        locatedCanvas.setValue(hostLayer, forKey: "layer")
         field.isSecureTextEntry = false
         field.isSecureTextEntry = true
-        canvas.setValue(displaced, forKey: "layer")
+        locatedCanvas.setValue(displaced, forKey: "layer")
 
         // VERIFY WHAT THE SEQUENCE ACTUALLY ESTABLISHES — and nothing more.
         //
@@ -165,10 +166,11 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
         // it is established by measurement (sentinel `200,0,160` in `drawHierarchy` while the display
         // shows `38,102,242`, docs/evidence/capability-matrix.md §3 rows 4 and 6) and re-checked end to
         // end by the example app's pixel probe. Asserting it here would be a guess dressed as a check.
-        guard canvas.layer === displaced,
+        guard locatedCanvas.layer === displaced,
               host.layer === hostLayer,
-              hostLayer.superlayer != nil else {
-            canvas.setValue(displaced, forKey: "layer")
+              hostLayer.superlayer != nil
+        else {
+            locatedCanvas.setValue(displaced, forKey: "layer")
             field.removeFromSuperview()
             failure = .privateSecureLayerSwapFailed
             return false
@@ -176,7 +178,7 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
 
         hostField = field
         displacedCanvasLayer = displaced
-        self.canvas = canvas
+        canvas = locatedCanvas
         protectedHost = host
         isEngaged = true
         failure = nil
@@ -201,8 +203,12 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
     /// Recursive, because the canvas is not guaranteed to be a direct subview.
     private static func findCanvas(in view: UIView) -> UIView? {
         for subview in view.subviews {
-            if NSStringFromClass(type(of: subview)).contains(canvasClassNameFragment) { return subview }
-            if let found = findCanvas(in: subview) { return found }
+            if NSStringFromClass(type(of: subview)).contains(canvasClassNameFragment) {
+                return subview
+            }
+            if let found = findCanvas(in: subview) {
+                return found
+            }
         }
         return nil
     }
@@ -212,7 +218,6 @@ final class ScreenGuardPrivateSecureLayer: ScreenGuardPrivateSecureLayerEngaging
 /// its counterpart in `ScreenGuardPrivateSecureLayerSupport.swift` covers the excluded case.
 @MainActor
 enum ScreenGuardPrivateSecureLayerFactory {
-
     /// Whether the private path is compiled into this build at all.
     static let isCompiledIn = true
 

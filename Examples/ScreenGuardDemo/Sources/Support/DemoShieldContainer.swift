@@ -23,14 +23,13 @@
 //  caller turns it on.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// Hosts a `ScreenGuardShieldView` over a live content view, and re-applies the strategy once the
 /// shield is in a window.
 @MainActor
 final class DemoShieldContainer: UIView {
-
     /// Called after every state synchronisation, so a host can render the shield's real status.
     var onStateChange: ((ScreenGuardShieldView) -> Void)?
 
@@ -65,10 +64,10 @@ final class DemoShieldContainer: UIView {
         content: UIView,
         shieldColor: UIColor = .black
     ) {
-        self.requested = strategy
+        requested = strategy
         self.content = content
         // Start inert and engage deliberately, so the ordering above is under this type's control.
-        self.shield = ScreenGuardShieldView(strategy: .disabled)
+        shield = ScreenGuardShieldView(strategy: .disabled)
         super.init(frame: .zero)
 
         shield.shieldColor = shieldColor
@@ -85,7 +84,9 @@ final class DemoShieldContainer: UIView {
 
     /// Unavailable. Use `init(strategy:content:shieldColor:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoShieldContainer must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoShieldContainer must be created programmatically")
+    }
 
     /// Requests a different strategy and re-synchronises.
     ///
@@ -97,12 +98,16 @@ final class DemoShieldContainer: UIView {
     }
 
     /// The strategy currently requested.
-    var requestedStrategy: ScreenGuardNoLeakStrategy { requested }
+    var requestedStrategy: ScreenGuardNoLeakStrategy {
+        requested
+    }
 
     /// Re-applies the requested strategy. Safe to call repeatedly.
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil else { return }
+        guard window != nil else {
+            return
+        }
         sync()
     }
 
@@ -140,12 +145,16 @@ final class DemoShieldContainer: UIView {
 
     /// Retries the private-path engagement after the next layout pass.
     private func scheduleRetryIfPossible() {
-        guard retriesRemaining > 0, window != nil else { return }
+        guard retriesRemaining > 0, window != nil else {
+            return
+        }
         retriesRemaining -= 1
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.layoutIfNeeded()
-            self.sync()
+            guard let self else {
+                return
+            }
+            layoutIfNeeded()
+            sync()
         }
     }
 }

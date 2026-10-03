@@ -16,13 +16,12 @@
 //  at it". It is also the only way to run the no-leak pixel check headlessly.
 //
 
+import ScreenGuard
 import SwiftUI
 import UIKit
-import ScreenGuard
 
 @main
 struct ScreenGuardDemoApp: App {
-
     init() {
         // The private-API opt-in is granted ONLY when the caller asked for it explicitly, and only
         // before any shield is built. Nothing else in the demo turns it on: the private path is a
@@ -42,7 +41,6 @@ struct ScreenGuardDemoApp: App {
 
 /// Picks the interactive demo or a probe page.
 struct DemoRoot: View {
-
     var body: some View {
         switch DemoConfig.probeMode {
         case .none:
@@ -90,11 +88,10 @@ struct DemoRoot: View {
 /// Hosts a probe `UIView` full-screen, with the status bar hidden so the probe page's normalised
 /// rectangles map to the same fractions the host script samples.
 struct ProbeHost: UIViewControllerRepresentable {
-
     /// Builds the probe view.
     let makeProbe: () -> UIView
 
-    func makeUIViewController(context: Context) -> UIViewController {
+    func makeUIViewController(context _: Context) -> UIViewController {
         let controller = UIViewController()
         controller.view.backgroundColor = .black
         let probe = makeProbe()
@@ -109,9 +106,11 @@ struct ProbeHost: UIViewControllerRepresentable {
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    func updateUIViewController(_: UIViewController, context _: Context) {}
 
     /// Hide the status bar: it overlays the top region and would put the system clock inside a
     /// sampled rectangle.
-    static var statusBarHidden: Bool { true }
+    static var statusBarHidden: Bool {
+        true
+    }
 }

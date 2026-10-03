@@ -27,7 +27,6 @@ import UIKit
 /// iOS 15-compatible — every iOS 17+ symbol sits behind an availability guard.
 @MainActor
 final class ScreenGuardCaptureStateObserver {
-
     /// What to register the trait change against. Both cases conform to `UITraitChangeObservable` on
     /// iOS 17+; the `UIView` case is preferred because the contract's verified snippet registers
     /// against a view.
@@ -73,7 +72,7 @@ final class ScreenGuardCaptureStateObserver {
     func start(host: Host) {
         if isObserving {
             // Already registered against this host — do not double-register.
-            if case .view(let existing) = self.host, case .view(let requested) = host, existing === requested {
+            if case let .view(existing) = self.host, case let .view(requested) = host, existing === requested {
                 return
             }
             stop()
@@ -82,48 +81,59 @@ final class ScreenGuardCaptureStateObserver {
         isObserving = true
 
         switch host {
-        case .view(let view):
+        case let .view(view):
             hostView = view
-            if #available(iOS 17.0, *) {
-                // PRIMARY (iOS 17+). Registers for the scene-capture trait; no polling, no
-                // notification. The legacy `UIScreen` observer is NOT installed at all, so one
-                // signal produces exactly one event (rule 1).
-                let reg = view.registerForTraitChanges(
-                    [UITraitSceneCaptureState.self]
-                ) { (environment: UIView, _: UITraitCollection) in
-                    // The handler is not actor-isolated; hop back explicitly.
-                    MainActor.assumeIsolated {
-                        self.publish(environment.traitCollection.sceneCaptureState)
-                    }
-                }
-                registration = reg
-                registerTraitTeardown { [weak view] in
-                    guard let view else { return }
-                    view.unregisterForTraitChanges(reg)
-                }
-                publish(view.traitCollection.sceneCaptureState)
-            } else {
-                startLegacy(screen: view.window?.windowScene?.screen)
-            }
+            startForView(view)
 
-        case .windowScene(let scene):
-            if #available(iOS 17.0, *) {
-                let reg = scene.registerForTraitChanges(
-                    [UITraitSceneCaptureState.self]
-                ) { (environment: UIWindowScene, _: UITraitCollection) in
-                    MainActor.assumeIsolated {
-                        self.publish(environment.traitCollection.sceneCaptureState)
-                    }
+        case let .windowScene(scene):
+            startForWindowScene(scene)
+        }
+    }
+
+    /// The iOS 17+ trait registration for a view host, or the legacy screen observer below it.
+    private func startForView(_ view: UIView) {
+        if #available(iOS 17.0, *) {
+            let reg = view.registerForTraitChanges(
+                [UITraitSceneCaptureState.self]
+            ) { (environment: UIView, _: UITraitCollection) in
+                // The handler is not actor-isolated; hop back explicitly.
+                MainActor.assumeIsolated {
+                    self.publish(environment.traitCollection.sceneCaptureState)
                 }
-                registration = reg
-                registerTraitTeardown { [weak scene] in
-                    guard let scene else { return }
-                    scene.unregisterForTraitChanges(reg)
-                }
-                publish(scene.traitCollection.sceneCaptureState)
-            } else {
-                startLegacy(screen: scene.screen)
             }
+            registration = reg
+            registerTraitTeardown { [weak view] in
+                guard let view else {
+                    return
+                }
+                view.unregisterForTraitChanges(reg)
+            }
+            publish(view.traitCollection.sceneCaptureState)
+        } else {
+            startLegacy(screen: view.window?.windowScene?.screen)
+        }
+    }
+
+    /// The iOS 17+ trait registration for a window-scene host, or the legacy screen observer.
+    private func startForWindowScene(_ scene: UIWindowScene) {
+        if #available(iOS 17.0, *) {
+            let reg = scene.registerForTraitChanges(
+                [UITraitSceneCaptureState.self]
+            ) { (environment: UIWindowScene, _: UITraitCollection) in
+                MainActor.assumeIsolated {
+                    self.publish(environment.traitCollection.sceneCaptureState)
+                }
+            }
+            registration = reg
+            registerTraitTeardown { [weak scene] in
+                guard let scene else {
+                    return
+                }
+                scene.unregisterForTraitChanges(reg)
+            }
+            publish(scene.traitCollection.sceneCaptureState)
+        } else {
+            startLegacy(screen: scene.screen)
         }
     }
 
@@ -150,13 +160,20 @@ final class ScreenGuardCaptureStateObserver {
 
     /// Removes the current trait registration now, on the main actor. Idempotent.
     private func unregisterTraitChanges() {
-        guard let registration else { return }
+        guard let registration else {
+            return
+        }
         self.registration = nil
         if #available(iOS 17.0, *), let reg = registration as? any UITraitChangeRegistration {
             switch host {
-            case .view(let view): view.unregisterForTraitChanges(reg)
-            case .windowScene(let scene): scene.unregisterForTraitChanges(reg)
-            case .none: break
+            case let .view(view):
+                view.unregisterForTraitChanges(reg)
+
+            case let .windowScene(scene):
+                scene.unregisterForTraitChanges(reg)
+
+            case .none:
+                break
             }
         }
     }
@@ -181,9 +198,13 @@ final class ScreenGuardCaptureStateObserver {
                 queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    guard let self, self.isObserving else { return }
+                    guard let self, self.isObserving else {
+                        return
+                    }
                     let resolved = self.hostView?.window?.windowScene?.screen
-                    guard let resolved, resolved !== self.observedScreen else { return }
+                    guard let resolved, resolved !== self.observedScreen else {
+                        return
+                    }
                     self.registerLegacy(screen: resolved)
                     self.publishLegacy(resolved.isCaptured)
                 }
@@ -219,23 +240,27 @@ final class ScreenGuardCaptureStateObserver {
 
     @available(iOS 17.0, *)
     private func publish(_ state: UISceneCaptureState) {
-        let mapped: ScreenGuardCaptureState
-        switch state {
+        let mapped: ScreenGuardCaptureState = switch state {
         case .active:
-            mapped = .active
+            .active
+
         case .inactive:
-            mapped = .inactive
+            .inactive
+
         case .unspecified:
-            mapped = .unspecified
+            .unspecified
+
         @unknown default:
             // Never crash on a future OS value, and never misread it as "active".
-            mapped = .unspecified
+            .unspecified
         }
         publish(mapped, source: .sceneCaptureState)
     }
 
     private func publish(_ state: ScreenGuardCaptureState, source: ScreenGuardDetectionSource) {
-        guard state != currentState else { return }
+        guard state != currentState else {
+            return
+        }
         currentState = state
         onStateChange?(state, source)
     }

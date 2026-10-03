@@ -18,7 +18,6 @@ import UIKit
 /// does pushing frames cost. The host screenshot is the ground truth for what the display shows,
 /// because it reads the display surface and therefore cannot be fooled by capture protection.
 enum FeasibilityProbe {
-
     @MainActor
     static func run(window: UIWindow) async {
         let log = RunLog.shared
@@ -28,7 +27,8 @@ enum FeasibilityProbe {
             + "\(UIDevice.current.systemVersion) screenScale=\(UIScreen.main.scale)")
 
         guard let reference = findHost(in: window, preventsCapture: false),
-              let protected = findHost(in: window, preventsCapture: true) else {
+              let protected = findHost(in: window, preventsCapture: true)
+        else {
             log.log("FEASIBILITY NOT-MEASURED: could not find both display-layer hosts in the hierarchy")
             return
         }
@@ -98,7 +98,9 @@ enum FeasibilityProbe {
             "protectedBounds": [protected.bounds.width, protected.bounds.height],
             "sourceSize": [sourceImage.width, sourceImage.height],
         ], name: "feasibility-\(runID).json")
-        if let summaryURL { log.log("WROTE \(summaryURL.path)") }
+        if let summaryURL {
+            log.log("WROTE \(summaryURL.path)")
+        }
         log.log("WROTE \(log.writeText("feasibility-\(runID).log").path)")
         log.log("=== CaptureMatrix feasibility \(runID) done ===")
         try? await Task.sleep(nanoseconds: 400_000_000)
@@ -135,7 +137,8 @@ enum FeasibilityProbe {
     /// which makes the comparison independent of the source being rendered at screen scale and the
     /// readback at 1x.
     private static func measureFidelity(source: CGImage, captured: CGImage,
-                                        windowRegion: CGRect, sourceHalf: Int, label: String) {
+                                        windowRegion: CGRect, sourceHalf: Int, label: String)
+    {
         let log = RunLog.shared
         guard let sourceBitmap = PixelAnalyzer.bitmap(source) else {
             log.log("FEASIBILITY fidelity[\(label)] NOT-MEASURED: source normalisation failed")
@@ -162,7 +165,7 @@ enum FeasibilityProbe {
         let count = min(sourcePixels.count, capturedPixels.count)
         var errorSum = 0.0
         var maxError = 0.0
-        for index in 0..<count {
+        for index in 0 ..< count {
             let a = sourcePixels[index]
             let b = capturedPixels[index]
             let error = (abs(Double(a.0 - b.0)) + abs(Double(a.1 - b.1)) + abs(Double(a.2 - b.2))) / 3
@@ -187,7 +190,7 @@ enum FeasibilityProbe {
         let footprintBefore = Stats.footprintMB()
         let wallStart = Stats.now()
 
-        for _ in 0..<frames {
+        for _ in 0 ..< frames {
             let start = Stats.now()
             host.display(source)
             enqueueDurations.append(Stats.now() - start)
@@ -215,9 +218,13 @@ enum FeasibilityProbe {
 
     private static func findHost(in window: UIWindow, preventsCapture: Bool) -> SampleBufferHostView? {
         func search(_ view: UIView) -> SampleBufferHostView? {
-            if let host = view as? SampleBufferHostView, host.preventsCapture == preventsCapture { return host }
+            if let host = view as? SampleBufferHostView, host.preventsCapture == preventsCapture {
+                return host
+            }
             for subview in view.subviews {
-                if let found = search(subview) { return found }
+                if let found = search(subview) {
+                    return found
+                }
             }
             return nil
         }
@@ -239,7 +246,8 @@ enum FeasibilityContent {
             let colours = [UIColor(red: 0.05, green: 0.10, blue: 0.35, alpha: 1).cgColor,
                            UIColor(red: 0.55, green: 0.10, blue: 0.30, alpha: 1).cgColor]
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                         colors: colours as CFArray, locations: [0, 1]) {
+                                         colors: colours as CFArray, locations: [0, 1])
+            {
                 cgContext.drawLinearGradient(gradient, start: .zero,
                                              end: CGPoint(x: bounds.width, y: bounds.height),
                                              options: [])
@@ -257,7 +265,8 @@ enum FeasibilityContent {
             ("ACCT 4417-8823-0019\nBAL 1,284,930.55\n" as NSString).draw(
                 in: CGRect(x: bounds.width * 0.08, y: bounds.height * 0.38,
                            width: bounds.width * 0.84, height: bounds.height * 0.40),
-                withAttributes: attributes)
+                withAttributes: attributes
+            )
             // Fine detail: a 1px-ish grid, the first thing a scaled layer loses.
             cgContext.setStrokeColor(UIColor.white.withAlphaComponent(0.55).cgColor)
             cgContext.setLineWidth(1)
@@ -283,7 +292,7 @@ struct FeasibilityView: View {
 }
 
 private struct FeasibilityStackRepresentable: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIStackView {
+    func makeUIView(context _: Context) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .vertical
         stack.distribution = .fillEqually
@@ -300,7 +309,7 @@ private struct FeasibilityStackRepresentable: UIViewRepresentable {
         return stack
     }
 
-    func updateUIView(_ uiView: UIStackView, context: Context) {}
+    func updateUIView(_: UIStackView, context _: Context) {}
 }
 
 /// A display-layer host with a label chip, for the feasibility layout.
@@ -335,5 +344,7 @@ final class FeasibilityHostView: UIView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 }

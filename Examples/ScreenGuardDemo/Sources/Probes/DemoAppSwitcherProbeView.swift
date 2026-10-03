@@ -22,13 +22,12 @@
 //  notification handler.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// Runs the app-switcher probe.
 @MainActor
 final class DemoAppSwitcherProbeView: UIView {
-
     private let runID: String
     private let shield = ScreenGuardAppSwitcherShield(style: .blur(style: .systemMaterial))
     private let stateLabel = UILabel()
@@ -69,7 +68,9 @@ final class DemoAppSwitcherProbeView: UIView {
 
     /// Unavailable. Use `init(runID:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoAppSwitcherProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoAppSwitcherProbeView must be created programmatically")
+    }
 
     private func build() {
         let title = UILabel()
@@ -79,13 +80,13 @@ final class DemoAppSwitcherProbeView: UIView {
 
         let note = UILabel()
         note.text = """
-            This page covers the app while the scene is inactive, so the system's app-switcher \
-            snapshot does not contain app content.
+        This page covers the app while the scene is inactive, so the system's app-switcher \
+        snapshot does not contain app content.
 
-            The snapshot's PIXELS cannot be verified on Simulator — the system writes them in a \
-            proprietary format neither ImageMagick nor ffmpeg can decode. That check requires a \
-            physical device.
-            """
+        The snapshot's PIXELS cannot be verified on Simulator — the system writes them in a \
+        proprietary format neither ImageMagick nor ffmpeg can decode. That check requires a \
+        physical device.
+        """
         note.font = .preferredFont(forTextStyle: .footnote)
         note.textColor = .secondaryLabel
         note.numberOfLines = 0
@@ -113,7 +114,9 @@ final class DemoAppSwitcherProbeView: UIView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard let window, !hasRun else { return }
+        guard let window, !hasRun else {
+            return
+        }
         hasRun = true
 
         let log = DemoLog.shared
@@ -134,7 +137,9 @@ final class DemoAppSwitcherProbeView: UIView {
             forName: UIScene.willDeactivateNotification, object: window.windowScene, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self else { return }
+                guard let self else {
+                    return
+                }
                 self.wasCoveringAtDeactivate = self.isCovering
                 self.record("UIScene.willDeactivate")
             }
@@ -168,7 +173,9 @@ final class DemoAppSwitcherProbeView: UIView {
     }
 
     /// Whether the shield is currently showing its cover.
-    private var isCovering: Bool { !shield.isHidden && shield.alpha > 0 }
+    private var isCovering: Bool {
+        !shield.isHidden && shield.alpha > 0
+    }
 
     /// Records one lifecycle transition.
     private func record(_ name: String) {

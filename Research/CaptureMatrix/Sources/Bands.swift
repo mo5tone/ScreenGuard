@@ -30,14 +30,22 @@ enum Band: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .plainControl:                  return "1 plain colour (control)"
-        case .sampleBufferProtected:         return "2 AVSBDL capture=ON"
-        case .sampleBufferControl:           return "3 AVSBDL capture=OFF"
-        case .secureLayerSwap:               return "4 secure-layer swap"
-        case .secureTextField:               return "5 secure UITextField"
-        case .secureLayerSwapControl:        return "6 secure-layer swap DISABLED (control)"
-        case .plainTextFieldReference:       return "7 plain UITextField (calibration)"
-        case .sampleBufferProtectedShielded: return "8 AVSBDL capture=ON + black shield"
+        case .plainControl:
+            "1 plain colour (control)"
+        case .sampleBufferProtected:
+            "2 AVSBDL capture=ON"
+        case .sampleBufferControl:
+            "3 AVSBDL capture=OFF"
+        case .secureLayerSwap:
+            "4 secure-layer swap"
+        case .secureTextField:
+            "5 secure UITextField"
+        case .secureLayerSwapControl:
+            "6 secure-layer swap DISABLED (control)"
+        case .plainTextFieldReference:
+            "7 plain UITextField (calibration)"
+        case .sampleBufferProtectedShielded:
+            "8 AVSBDL capture=ON + black shield"
         }
     }
 
@@ -45,23 +53,31 @@ enum Band: Int, CaseIterable {
         switch self {
         case .plainControl, .sampleBufferProtected, .sampleBufferControl,
              .secureLayerSwap, .secureTextField:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 
     /// What the technique itself paints. Anything else in a capture means the pixels were excluded.
     var expected: (r: Int, g: Int, b: Int) {
         switch self {
-        case .plainControl:                  return (229, 25, 25)
-        case .sampleBufferProtected:         return (38, 191, 64)
-        case .sampleBufferControl:           return (242, 216, 25)
-        case .secureLayerSwap:               return (38, 102, 242)
-        case .secureTextField:               return (242, 140, 13)
-        case .secureLayerSwapControl:        return (38, 102, 242)
-        case .plainTextFieldReference:       return (150, 60, 200)
-        case .sampleBufferProtectedShielded: return (38, 191, 64)
+        case .plainControl:
+            (229, 25, 25)
+        case .sampleBufferProtected:
+            (38, 191, 64)
+        case .sampleBufferControl:
+            (242, 216, 25)
+        case .secureLayerSwap:
+            (38, 102, 242)
+        case .secureTextField:
+            (242, 140, 13)
+        case .secureLayerSwapControl:
+            (38, 102, 242)
+        case .plainTextFieldReference:
+            (150, 60, 200)
+        case .sampleBufferProtectedShielded:
+            (38, 191, 64)
         }
     }
 
@@ -73,8 +89,13 @@ enum Band: Int, CaseIterable {
     /// A text field's own background is transparent by construction, so its colour rect can only
     /// ever report whatever is *behind* the field. Its only usable signal is the text strip;
     /// emitting a colour verdict for it would be inventing a cell.
-    var hasText: Bool { self == .secureTextField || self == .plainTextFieldReference }
-    var hasColourSignal: Bool { !hasText }
+    var hasText: Bool {
+        self == .secureTextField || self == .plainTextFieldReference
+    }
+
+    var hasColourSignal: Bool {
+        !hasText
+    }
 
     /// Painted underneath the technique view.
     ///
@@ -94,7 +115,9 @@ enum Band: Int, CaseIterable {
         self == .sampleBufferProtectedShielded ? "opaque-black" : "sentinel-magenta"
     }
 
-    var swapEnabled: Bool { self != .secureLayerSwapControl }
+    var swapEnabled: Bool {
+        self != .secureLayerSwapControl
+    }
 }
 
 /// Sentinel painted behind every technique view. No band colour is anywhere near this hue.
@@ -108,12 +131,20 @@ let sentinelRGB: (r: Int, g: Int, b: Int) = (200, 0, 160)
 /// strip, and clear of the home indicator that floats over the bottom of the last band. Sampling
 /// through the label or the text is exactly what produced a false black in the earlier probe.
 enum Geometry {
-    static var bandCount: Int { Band.allCases.count }
-    static func bandTopFraction(_ index: Int) -> Double { Double(index) / Double(bandCount) }
-    static var bandHeightFraction: Double { 1.0 / Double(bandCount) }
+    static var bandCount: Int {
+        Band.allCases.count
+    }
+
+    static func bandTopFraction(_ index: Int) -> Double {
+        Double(index) / Double(bandCount)
+    }
+
+    static var bandHeightFraction: Double {
+        1.0 / Double(bandCount)
+    }
 
     static let colorInBand = CGRect(x: 0.76, y: 0.50, width: 0.18, height: 0.22)
-    static let textInBand  = CGRect(x: 0.28, y: 0.40, width: 0.44, height: 0.22)
+    static let textInBand = CGRect(x: 0.28, y: 0.40, width: 0.44, height: 0.22)
 
     static func absolute(_ rect: CGRect, band index: Int) -> CGRect {
         let top = bandTopFraction(index)

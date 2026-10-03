@@ -5,7 +5,6 @@ import UIKit
 /// The capture paths under test. Each returns a normalised RGBA8 `CGImage` plus a one-line
 /// provenance string that goes into the evidence doc.
 enum CapturePaths {
-
     struct Result {
         let path: String
         let image: CGImage?
@@ -64,14 +63,20 @@ enum CapturePaths {
                 if let error {
                     RunLog.shared.log("system-capture: handler error: \(error.localizedDescription)")
                     box.fail(error.localizedDescription)
-                    if box.claimContinuation() { continuation.resume(returning: false) }
+                    if box.claimContinuation() {
+                        continuation.resume(returning: false)
+                    }
                     return
                 }
                 // Log the first buffer of every type, so a "no video frame" result can be told apart
                 // from "the pipeline never called back at all".
                 box.note(type: type)
-                guard type == .video else { return }
-                guard let frame = FrameBox.describe(sampleBuffer) else { return }
+                guard type == .video else {
+                    return
+                }
+                guard let frame = FrameBox.describe(sampleBuffer) else {
+                    return
+                }
                 if box.store(frame), box.claimContinuation() {
                     continuation.resume(returning: true)
                 }
@@ -79,7 +84,9 @@ enum CapturePaths {
                 if let error {
                     RunLog.shared.log("system-capture: startCapture failed: \(error.localizedDescription)")
                     box.fail(error.localizedDescription)
-                    if box.claimContinuation() { continuation.resume(returning: false) }
+                    if box.claimContinuation() {
+                        continuation.resume(returning: false)
+                    }
                 } else {
                     RunLog.shared.log("system-capture: startCapture completion fired with no error (pipeline is live)")
                 }
@@ -99,7 +106,9 @@ enum CapturePaths {
         }
 
         recorder.stopCapture { error in
-            if let error { RunLog.shared.log("system-capture: stopCapture error: \(error.localizedDescription)") }
+            if let error {
+                RunLog.shared.log("system-capture: stopCapture error: \(error.localizedDescription)")
+            }
         }
 
         guard let frame = box.frame else {
@@ -144,26 +153,35 @@ enum CapturePaths {
         func note(type: RPSampleBufferType) {
             lock.lock(); defer { lock.unlock() }
             callbackInvocations += 1
-            let name: String
-            switch type {
-            case .video: name = "video"
-            case .audioApp: name = "audioApp"
-            case .audioMic: name = "audioMic"
-            @unknown default: name = "unknown(\(type.rawValue))"
+            let name = switch type {
+            case .video:
+                "video"
+            case .audioApp:
+                "audioApp"
+            case .audioMic:
+                "audioMic"
+            @unknown default:
+                "unknown(\(type.rawValue))"
             }
-            if !bufferTypesSeen.contains(name) { bufferTypesSeen.append(name) }
+            if !bufferTypesSeen.contains(name) {
+                bufferTypesSeen.append(name)
+            }
         }
 
         func claimContinuation() -> Bool {
             lock.lock(); defer { lock.unlock() }
-            if claimed { return false }
+            if claimed {
+                return false
+            }
             claimed = true
             return true
         }
 
         func store(_ frame: Frame) -> Bool {
             lock.lock(); defer { lock.unlock() }
-            guard stored == nil else { return false }
+            guard stored == nil else {
+                return false
+            }
             stored = frame
             return true
         }
@@ -174,13 +192,18 @@ enum CapturePaths {
         }
 
         static func describe(_ sampleBuffer: CMSampleBuffer) -> Frame? {
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                return nil
+            }
             let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
             let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-            guard let image = CIContext().createCGImage(ciImage, from: ciImage.extent) else { return nil }
+            guard let image = CIContext().createCGImage(ciImage, from: ciImage.extent) else {
+                return nil
+            }
             var codec = "unknown"
             if let format = CMSampleBufferGetFormatDescription(sampleBuffer),
-               let subtype = CMFormatDescriptionGetMediaSubType(format) as FourCharCode? {
+               let subtype = CMFormatDescriptionGetMediaSubType(format) as FourCharCode?
+            {
                 codec = fourCC(subtype)
             }
             return Frame(image: image, pixelFormat: pixelFormat, codecType: codec)
@@ -208,7 +231,8 @@ enum CapturePaths {
         guard width > 0, height > 0,
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                       bytesPerRow: width * 4, space: PixelAnalyzer.sRGB,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
             return Result(path: "app-render(layer.render)", image: nil, note: "no context", detail: [:])
         }
         // Match UIKit's top-left origin so band fractions mean the same thing on every path.

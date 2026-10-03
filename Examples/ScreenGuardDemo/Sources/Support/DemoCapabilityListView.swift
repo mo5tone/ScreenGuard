@@ -17,21 +17,20 @@
 //  registry matches §4, so the two cannot silently diverge.
 //
 
+import ScreenGuard
 import SwiftUI
 import UIKit
-import ScreenGuard
 
 /// A scrolling list of every capability the package models, with its honest status.
 final class DemoCapabilityListView: UIView {
-
     /// The banner that has to be read before any of the rows.
     private static let bannerText = """
-        iOS does not allow an app to prevent a screenshot or a screen recording.
+    iOS does not allow an app to prevent a screenshot or a screen recording.
 
-        This package DETECTS captures and keeps sensitive content OUT of them. \
-        A protected region appearing black in a capture is the success case. \
-        Nothing here blocks the user's action — no public API can.
-        """
+    This package DETECTS captures and keeps sensitive content OUT of them. \
+    A protected region appearing black in a capture is the success case. \
+    Nothing here blocks the user's action — no public API can.
+    """
 
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
@@ -72,7 +71,9 @@ final class DemoCapabilityListView: UIView {
 
     /// Unavailable. Use `init()`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoCapabilityListView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoCapabilityListView must be created programmatically")
+    }
 
     // MARK: - Building
 
@@ -251,16 +252,26 @@ final class DemoCapabilityListView: UIView {
     /// - Returns: Its display name.
     private static func displayName(for capability: ScreenGuardCapability) -> String {
         switch capability {
-        case .screenshotDetection:            return "Screenshot detection"
-        case .captureStateDetection:          return "Capture detection (recording / mirroring / AirPlay)"
-        case .noLeakSecureTextEntry:          return "No-leak — a text field's own content"
-        case .noLeakPublicPreventsCapture:    return "No-leak — arbitrary content, public path"
-        case .noLeakPrivateSecureLayer:       return "No-leak — arbitrary content, private path"
-        case .noLeakRecordingPath:            return "No-leak — recording path, any technique"
-        case .watermark:                      return "Forensic watermark"
-        case .appSwitcherSnapshotProtection:  return "App-switcher snapshot protection"
-        case .preventUserScreenshot:          return "Prevent a screenshot"
-        case .preventUserRecording:           return "Prevent a recording"
+        case .screenshotDetection:
+            "Screenshot detection"
+        case .captureStateDetection:
+            "Capture detection (recording / mirroring / AirPlay)"
+        case .noLeakSecureTextEntry:
+            "No-leak — a text field's own content"
+        case .noLeakPublicPreventsCapture:
+            "No-leak — arbitrary content, public path"
+        case .noLeakPrivateSecureLayer:
+            "No-leak — arbitrary content, private path"
+        case .noLeakRecordingPath:
+            "No-leak — recording path, any technique"
+        case .watermark:
+            "Forensic watermark"
+        case .appSwitcherSnapshotProtection:
+            "App-switcher snapshot protection"
+        case .preventUserScreenshot:
+            "Prevent a screenshot"
+        case .preventUserRecording:
+            "Prevent a recording"
         }
     }
 
@@ -271,10 +282,14 @@ final class DemoCapabilityListView: UIView {
     ///   most important thing on this page to notice.
     private static func colour(for status: ScreenGuardVerificationStatus) -> UIColor {
         switch status {
-        case .measured:      return .systemGreen
-        case .devicePending: return .systemOrange
-        case .notMeasured:   return .systemGray
-        case .notPossible:   return .systemRed
+        case .measured:
+            .systemGreen
+        case .devicePending:
+            .systemOrange
+        case .notMeasured:
+            .systemGray
+        case .notPossible:
+            .systemRed
         }
     }
 }
@@ -285,8 +300,7 @@ final class DemoCapabilityListView: UIView {
 /// attached to a view controller, and the capability page is a pushed screen with its own navigation
 /// bar and scrolling behaviour.
 struct DemoCapabilityScreen: UIViewControllerRepresentable {
-
-    func makeUIViewController(context: Context) -> UIViewController {
+    func makeUIViewController(context _: Context) -> UIViewController {
         let controller = UIViewController()
         let list = DemoCapabilityListView()
         list.translatesAutoresizingMaskIntoConstraints = false
@@ -301,5 +315,5 @@ struct DemoCapabilityScreen: UIViewControllerRepresentable {
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    func updateUIViewController(_: UIViewController, context _: Context) {}
 }

@@ -38,7 +38,6 @@ import UIKit
 /// iOS 15-compatible — no availability guard is required.
 @MainActor
 public final class ScreenGuardMonitor: ObservableObject {
-
     // MARK: - Configuration
 
     /// The configuration this monitor was created with.
@@ -83,7 +82,7 @@ public final class ScreenGuardMonitor: ObservableObject {
     ///   app-switcher cover all on, and the no-leak strategy `.publicPreventsCaptureLayer`.
     public init(configuration: ScreenGuardConfiguration = ScreenGuardConfiguration()) {
         self.configuration = configuration
-        self.state = ScreenGuardState()
+        state = ScreenGuardState()
 
         captureStateObserver.onStateChange = { [weak self] captureState, source in
             self?.handleCaptureStateChange(to: captureState, source: source)
@@ -100,7 +99,9 @@ public final class ScreenGuardMonitor: ObservableObject {
     /// On iOS 17+ the scene-capture trait is the only signal registered — the legacy `UIScreen`
     /// observer is not installed at all, so one signal produces exactly one event.
     public func start() {
-        guard !isMonitoring else { return }
+        guard !isMonitoring else {
+            return
+        }
 
         state.isMonitoring = true
 
@@ -119,7 +120,9 @@ public final class ScreenGuardMonitor: ObservableObject {
 
     /// Stops observation and removes every observer and trait registration. Idempotent.
     public func stop() {
-        guard isMonitoring || hasResidualObservers else { return }
+        guard isMonitoring || hasResidualObservers else {
+            return
+        }
 
         captureStateObserver.stop()
         screenshotObserver.stop()
@@ -131,7 +134,9 @@ public final class ScreenGuardMonitor: ObservableObject {
     }
 
     /// Whether the monitor is currently observing.
-    public var isMonitoring: Bool { state.isMonitoring }
+    public var isMonitoring: Bool {
+        state.isMonitoring
+    }
 
     /// `true` when an observer is still installed even though `isMonitoring` is `false`. Guards
     /// `stop()` against being a no-op before `start()`, and keeps it idempotent after.
@@ -164,12 +169,14 @@ public final class ScreenGuardMonitor: ObservableObject {
     /// Resolves the window to observe without ever touching `UIScreen.main` (hard-deprecated as of
     /// iOS 26.0).
     private func resolvedWindow() -> UIWindow? {
-        if let observedWindow, observedWindow.windowScene != nil { return observedWindow }
+        if let observedWindow, observedWindow.windowScene != nil {
+            return observedWindow
+        }
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let keyWindow = scenes
             .first { $0.activationState == .foregroundActive }?
             .windows
-            .first { $0.isKeyWindow }
+            .first(where: \.isKeyWindow)
         if let keyWindow {
             observedWindow = keyWindow
             return keyWindow
@@ -182,15 +189,21 @@ public final class ScreenGuardMonitor: ObservableObject {
     /// Re-attempts registration when a window becomes key. Needed because a monitor may be started
     /// before the app's window exists (e.g. from an early `init`).
     private func observeKeyWindowChanges() {
-        guard keyWindowObserver == nil else { return }
+        guard keyWindowObserver == nil else {
+            return
+        }
         keyWindowObserver = NotificationCenter.default.addObserver(
             forName: UIWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.isMonitoring, self.configuration.isCaptureStateDetectionEnabled else { return }
-                guard let host = self.hostForCaptureState() else { return }
+                guard let self, self.isMonitoring, self.configuration.isCaptureStateDetectionEnabled else {
+                    return
+                }
+                guard let host = self.hostForCaptureState() else {
+                    return
+                }
                 if let keyWindowObserver = self.keyWindowObserver {
                     NotificationCenter.default.removeObserver(keyWindowObserver)
                     self.keyWindowObserver = nil
@@ -210,7 +223,9 @@ public final class ScreenGuardMonitor: ObservableObject {
         state.captureState = captureState
         state.detectionSource = source
 
-        guard let kind = ScreenGuardEventMapper.eventKind(from: previous, to: captureState) else { return }
+        guard let kind = ScreenGuardEventMapper.eventKind(from: previous, to: captureState) else {
+            return
+        }
         emit(ScreenGuardEvent(kind: kind, captureState: captureState, detectionSource: source))
     }
 
@@ -251,7 +266,9 @@ public final class ScreenGuardMonitor: ObservableObject {
     // MARK: - App-switcher shield
 
     private func startAppSwitcherShield() {
-        guard appSwitcherShield == nil else { return }
+        guard appSwitcherShield == nil else {
+            return
+        }
         let shield = ScreenGuardAppSwitcherShield()
         shield.onProtectionFailure = { [weak self] reason in
             self?.reportProtectionFailure(reason)

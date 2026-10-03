@@ -29,28 +29,27 @@
 //  `Scripts/verify_capture.sh` (the example app enables the trait).
 //
 
+@testable import ScreenGuard
 import SwiftUI
 import UIKit
 import XCTest
-@testable import ScreenGuard
 
 @MainActor
 final class ScreenGuardRendererContentTests: XCTestCase {
-
     /// The reason string for tests that need the private-API code compiled in.
-    private static let privateTraitReason =
+    static let privateTraitReason =
         "PRIVATEAPI-REQUIRED: the `PrivateAPI` package trait is not enabled in this build, so the "
-        + "private secure-layer engine is not compiled in and cannot be engaged. Run this suite in a "
-        + "trait-enabled checkout, or see Scripts/verify_capture.sh (the example app enables the trait)."
+            + "private secure-layer engine is not compiled in and cannot be engaged. Run this suite in a "
+            + "trait-enabled checkout, or see Scripts/verify_capture.sh (the example app enables the trait)."
 
     /// The colour the test renderer paints. Equal to the demo's `sensitiveColour`, so the pixel check
     /// below uses the same reference the end-to-end probe uses.
-    private static let rendererColour = UIColor(red: 38 / 255, green: 102 / 255, blue: 242 / 255, alpha: 1)
+    static let rendererColour = UIColor(red: 38 / 255, green: 102 / 255, blue: 242 / 255, alpha: 1)
 
     // MARK: - Helpers
 
     /// A window that behaves like a real hierarchy for `view.window != nil`.
-    private func makeWindow(width: CGFloat = 320, height: CGFloat = 240) -> UIWindow {
+    func makeWindow(width: CGFloat = 320, height: CGFloat = 240) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: height))
         window.rootViewController = UIViewController()
         window.isHidden = false
@@ -66,13 +65,13 @@ final class ScreenGuardRendererContentTests: XCTestCase {
     /// has no `UIView` to give.
     ///
     /// - Returns: The shield and a counter of how many times the renderer ran.
-    private func makeSwiftUIShapedShield(
+    func makeSwiftUIShapedShield(
         strategy: ScreenGuardNoLeakStrategy,
         window: UIWindow
     ) -> (shield: ScreenGuardShieldView, renderCount: () -> Int) {
         var renders = 0
-        let shield = ScreenGuardShieldView(strategy: strategy)      // makeUIView, line 1
-        shield.protectedContentRenderer = { size, scale in          // makeUIView, line 2
+        let shield = ScreenGuardShieldView(strategy: strategy) // makeUIView, line 1
+        shield.protectedContentRenderer = { size, scale in // makeUIView, line 2
             renders += 1
             return Self.solidImage(size: size, scale: scale)
         }
@@ -83,8 +82,10 @@ final class ScreenGuardRendererContentTests: XCTestCase {
     }
 
     /// A solid `rendererColour` image, the way the SwiftUI bridge's `ImageRenderer` would produce one.
-    private static func solidImage(size: CGSize, scale: CGFloat) -> UIImage? {
-        guard size.width > 1, size.height > 1 else { return nil }
+    static func solidImage(size: CGSize, scale: CGFloat) -> UIImage? {
+        guard size.width > 1, size.height > 1 else {
+            return nil
+        }
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = scale
         format.opaque = true
@@ -100,10 +101,12 @@ final class ScreenGuardRendererContentTests: XCTestCase {
     /// Deliberately a property of the live hierarchy rather than of a particular mechanism: the
     /// question F-R2-1 asks is "does anything the user can see carry the rendered content?". Hidden
     /// views do not count — a view the user cannot see is the blank card the finding is about.
-    private func displayedRendererImage(in shield: ScreenGuardShieldView) -> UIImage? {
+    func displayedRendererImage(in shield: ScreenGuardShieldView) -> UIImage? {
         var found: UIImage?
         func walk(_ view: UIView) {
-            guard found == nil else { return }
+            guard found == nil else {
+                return
+            }
             if let imageView = view as? UIImageView, let image = imageView.image, !imageView.isHidden {
                 found = image
                 return
@@ -118,11 +121,15 @@ final class ScreenGuardRendererContentTests: XCTestCase {
     ///
     /// The renderer's output is 16 bits per component, so a raw byte read yields noise
     /// (`docs/TOOLING.md` §5).
-    private static func pixel(in image: UIImage, at normalizedPoint: CGPoint) -> (Int, Int, Int)? {
-        guard let cgImage = image.cgImage else { return nil }
+    static func pixel(in image: UIImage, at normalizedPoint: CGPoint) -> (Int, Int, Int)? {
+        guard let cgImage = image.cgImage else {
+            return nil
+        }
         let width = cgImage.width
         let height = cgImage.height
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else {
+            return nil
+        }
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         guard let context = bytes.withUnsafeMutableBytes({ buffer -> CGContext? in
             CGContext(
@@ -134,7 +141,9 @@ final class ScreenGuardRendererContentTests: XCTestCase {
                 space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             )
-        }) else { return nil }
+        }) else {
+            return nil
+        }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         let x = min(width - 1, max(0, Int(normalizedPoint.x * CGFloat(width))))
         let y = min(height - 1, max(0, Int(normalizedPoint.y * CGFloat(height))))
@@ -142,18 +151,18 @@ final class ScreenGuardRendererContentTests: XCTestCase {
         return (Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]))
     }
 
-    private static func components(_ color: UIColor) -> (Int, Int, Int) {
+    static func components(_ color: UIColor) -> (Int, Int, Int) {
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
         color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
         return (Int(red * 255), Int(green * 255), Int(blue * 255))
     }
 
-    private static func channelDistance(_ lhs: (Int, Int, Int), _ rhs: (Int, Int, Int)) -> Int {
+    static func channelDistance(_ lhs: (Int, Int, Int), _ rhs: (Int, Int, Int)) -> Int {
         max(abs(lhs.0 - rhs.0), max(abs(lhs.1 - rhs.1), abs(lhs.2 - rhs.2)))
     }
 
     /// Skips with the documented reason when the private-API code is not compiled into this build.
-    private func requirePrivateTrait() throws {
+    func requirePrivateTrait() throws {
         guard ScreenGuard.PrivateAPI.isCompiledIn else {
             throw XCTSkip(Self.privateTraitReason)
         }
@@ -282,108 +291,6 @@ final class ScreenGuardRendererContentTests: XCTestCase {
         }
     }
 
-    // MARK: - The REAL SwiftUI modifier
-
-    /// The first `ScreenGuardShieldView` in a hierarchy.
-    private func firstShield(in root: UIView) -> ScreenGuardShieldView? {
-        if let shield = root as? ScreenGuardShieldView { return shield }
-        for subview in root.subviews {
-            if let found = firstShield(in: subview) { return found }
-        }
-        return nil
-    }
-
-    /// The package's OWN modifier, on a real `UIHostingController` — not a hand-rolled reproduction of
-    /// the bridge's call sequence.
-    ///
-    /// This is the test that would have caught the F-R2-1 defect end to end. The tests above reproduce
-    /// `ScreenGuardShieldRepresentable.makeUIView`'s calls by hand; this one lets the package build the
-    /// bridge itself, with the real `ImageRenderer`-backed rasteriser behind it, and then asks whether
-    /// anything is actually on screen. Measured (round-3 repair): the hand-rolled version passed while
-    /// this one still failed, because the real route reaches the shield through SwiftUI's layout and
-    /// update cycle rather than through `frame` + `layoutIfNeeded`.
-    ///
-    /// `.disabled` is used because it needs no private trait: the mode's documented job is to show the
-    /// content, so "is the rendered content on screen?" is a complete question in the default build.
-    func testTheRealSwiftUIModifierShowsRenderedContent() throws {
-        let window = makeWindow(width: 320, height: 240)
-        let controller = UIHostingController(
-            rootView: Rectangle()
-                .fill(Color(uiColor: Self.rendererColour))
-                .screenGuardProtected(strategy: .disabled)
-        )
-        window.rootViewController = controller
-        window.isHidden = false
-        controller.view.frame = window.bounds
-        window.layoutIfNeeded()
-        controller.view.layoutIfNeeded()
-
-        let shield = try XCTUnwrap(
-            firstShield(in: controller.view),
-            "the modifier must build a ScreenGuardShieldView"
-        )
-        XCTAssertEqual(shield.shieldMode, .disabled)
-
-        // Narrow the failure to a STAGE, so a red test says where the content was dropped rather than
-        // just "the card is blank". Each assertion below is a precondition of the next.
-        let size = shield.bounds.size
-        XCTAssertGreaterThan(
-            size.width, 1,
-            "stage 1 — the shield must have been laid out; bounds are \(shield.bounds)"
-        )
-
-        let renderer = try XCTUnwrap(
-            shield.protectedContentRenderer,
-            "stage 2 — the SwiftUI bridge must install a render function on the shield"
-        )
-        XCTAssertNotNil(
-            renderer(size, 2),
-            "stage 3 — the package's own rasteriser must turn the SwiftUI content into an image for a "
-                + "\(size) region"
-        )
-
-        XCTAssertNotNil(
-            displayedRendererImage(in: shield),
-            "stage 4 — the package's own SwiftUI modifier must put the rendered content on screen; the "
-                + "shield being an opaque black card is the F-R2-1 blank"
-        )
-    }
-
-    /// The same modifier on the DEFAULT strategy, where the content is pushed into the display layer
-    /// rather than hosted live.
-    ///
-    /// `hasPushedFrame` is driven by the REAL enqueue result and the enqueue is only reached when the
-    /// renderer produced a non-nil image, so this is the public path's own proof that the SwiftUI
-    /// rasteriser works — and it is the proof that was missing. Before the repair the renderer returned
-    /// `nil` for every size, on every strategy, because a `ViewModifier`'s `content` is a
-    /// `_ViewModifier_Content` placeholder that does not render on its own. On Simulator that was
-    /// invisible on this path: `preventsCapture = true` already makes the layer paint nothing here
-    /// (`docs/TOOLING.md` §7.1), so "no frame was ever pushed" and "the layer is blank by design"
-    /// looked identical.
-    func testTheRealSwiftUIModifierRasterisesOnTheDefaultPublicStrategy() throws {
-        let window = makeWindow(width: 320, height: 240)
-        let controller = UIHostingController(
-            rootView: Rectangle()
-                .fill(Color(uiColor: Self.rendererColour))
-                .screenGuardProtected()          // default: .publicPreventsCaptureLayer
-        )
-        window.rootViewController = controller
-        window.isHidden = false
-        controller.view.frame = window.bounds
-        window.layoutIfNeeded()
-        controller.view.layoutIfNeeded()
-
-        let shield = try XCTUnwrap(firstShield(in: controller.view))
-        XCTAssertEqual(shield.shieldMode, .publicPreventsCaptureLayer)
-        XCTAssertTrue(shield.isProtecting)
-        XCTAssertTrue(
-            shield.hasPushedFrame,
-            "the public path must have rasterised the SwiftUI content and enqueued it; a `false` here "
-                + "means the renderer produced no image, which is the rasteriser defect the F-R2-1 "
-                + "repair uncovered (see ScreenGuardProtectedView's note)"
-        )
-    }
-
     // MARK: - The guard: the repair must not put live content on the public path
 
     /// The public path's invariant (review round 1, F1): a view in the live hierarchy is rendered by
@@ -394,7 +301,7 @@ final class ScreenGuardRendererContentTests: XCTestCase {
     /// hosting must be torn down on the switch to `.publicPreventsCaptureLayer`, exactly as the
     /// caller-supplied live view already is. It is written in two halves so that it cannot pass
     /// vacuously — the content must be shown FIRST, and gone after.
-    func testSwitchingToThePublicPathRemovesRendererBackedContent() throws {
+    func testSwitchingToThePublicPathRemovesRendererBackedContent() {
         let window = makeWindow()
         let (shield, _) = makeSwiftUIShapedShield(strategy: .disabled, window: window)
 

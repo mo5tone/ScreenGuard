@@ -6,15 +6,14 @@
 //  and the honest labels, which is where the demo's real difficulty lives.
 //
 
-import SwiftUI
-import UIKit
 import ReplayKit
 import ScreenGuard
+import SwiftUI
+import UIKit
 
 /// A snapshot of a shield's real state, so a card can report what the shield *is doing* rather than
 /// what it was asked to do.
 struct DemoShieldSummary: Equatable {
-
     /// Whether the shield is actually protecting.
     var isProtecting = false
 
@@ -49,7 +48,6 @@ struct DemoShieldSummary: Equatable {
 /// (`docs/TOOLING.md` §7.2).
 @MainActor
 final class DemoRecorder: ObservableObject {
-
     /// Whether a capture session is running.
     @Published private(set) var isRecording = false
 
@@ -77,23 +75,30 @@ final class DemoRecorder: ObservableObject {
         audioBuffers = 0
         status = "Starting…"
         recorder.isMicrophoneEnabled = false
-        recorder.startCapture { [weak self] sample, type, error in
+        recorder.startCapture { [weak self] _, type, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self else {
+                    return
+                }
                 if let error {
                     self.status = "startCapture handler reported: \(error.localizedDescription)"
                     return
                 }
                 switch type {
-                case .video: self.videoBuffers += 1
-                case .audioApp, .audioMic: self.audioBuffers += 1
-                @unknown default: break
+                case .video:
+                    self.videoBuffers += 1
+                case .audioApp, .audioMic:
+                    self.audioBuffers += 1
+                @unknown default:
+                    break
                 }
                 self.status = "Receiving buffers."
             }
         } completionHandler: { [weak self] error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self else {
+                    return
+                }
                 self.isRecording = error == nil
                 if let error {
                     self.status = "startCapture failed: \(error.localizedDescription)"
@@ -108,7 +113,9 @@ final class DemoRecorder: ObservableObject {
     func stop() {
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self else {
+                    return
+                }
                 self.isRecording = false
                 if let error {
                     self.status = "stopCapture failed: \(error.localizedDescription)"

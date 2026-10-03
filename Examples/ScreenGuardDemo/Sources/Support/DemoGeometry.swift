@@ -26,7 +26,6 @@ import UIKit
 
 /// Colours, copy and geometry shared by the demo and the verification script.
 enum DemoGeometry {
-
     // MARK: - Colours
 
     /// The colour of the sensitive content itself. A capture that contains this colour inside a
@@ -106,6 +105,7 @@ enum DemoGeometry {
     static let probeRegions: [Region] = [control, publicShield, privateShield]
 
     // MARK: - SwiftUI-route probe page
+
     //
     // A THIRD probe page, added by the F-R2-1 repair (`docs/api-contract.md` §13 A3). It exercises
     // the package's own SwiftUI entry point — `.screenGuardProtected(strategy: .privateSecureLayer)`
@@ -145,6 +145,7 @@ enum DemoGeometry {
     static let swiftUIProbeRegions: [Region] = [swiftUIControl, swiftUIPrivateShield]
 
     // MARK: - Watermark probe page
+
     //
     // A second, separate probe page. The watermark is a DETERRENT AND FORENSIC measure: it removes no
     // pixels from any capture and prevents nothing (docs/api-contract.md §3.3). The page therefore

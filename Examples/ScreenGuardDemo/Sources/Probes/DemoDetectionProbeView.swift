@@ -20,13 +20,12 @@
 //    `WIRING-ONLY (synthetic)` and never reports it as a detection pass.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// Runs the detection probe.
 @MainActor
 final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
-
     private let runID: String
     private let monitor: ScreenGuardMonitor
     private let stateLabel = UILabel()
@@ -40,7 +39,7 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
     /// - Parameter runID: The host script's run identifier.
     init(runID: String) {
         self.runID = runID
-        self.monitor = ScreenGuardMonitor()
+        monitor = ScreenGuardMonitor()
         super.init(frame: .zero)
         backgroundColor = .systemBackground
         build()
@@ -53,7 +52,9 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
 
     /// Unavailable. Use `init(runID:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoDetectionProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoDetectionProbeView must be created programmatically")
+    }
 
     // MARK: - Layout
 
@@ -108,16 +109,20 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
 
     private static func describe(_ kind: ScreenGuardEvent.Kind) -> String {
         switch kind {
-        case .screenshotTaken:                     return "screenshotTaken"
-        case .captureBegan:                        return "captureBegan"
-        case .captureEnded:                        return "captureEnded"
-        case .protectionDegraded(let reason):      return "protectionDegraded(\(reason.rawValue))"
+        case .screenshotTaken:
+            "screenshotTaken"
+        case .captureBegan:
+            "captureBegan"
+        case .captureEnded:
+            "captureEnded"
+        case let .protectionDegraded(reason):
+            "protectionDegraded(\(reason.rawValue))"
         }
     }
 
     // MARK: - Delegate
 
-    func screenGuard(_ monitor: ScreenGuardMonitor, didDetect event: ScreenGuardEvent) {
+    func screenGuard(_: ScreenGuardMonitor, didDetect event: ScreenGuardEvent) {
         // The delegate seam is the second delivery path; it is recorded separately so a broken
         // delegate wiring cannot hide behind a working closure.
         DemoLog.shared.log("DELEGATE event kind=\(Self.describe(event.kind)) "
@@ -128,7 +133,9 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, !hasRun else { return }
+        guard window != nil, !hasRun else {
+            return
+        }
         hasRun = true
 
         let log = DemoLog.shared
@@ -194,9 +201,11 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
             object: nil
         )
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self else { return }
-            log.log("SYNTHETIC-POST after events=\(self.events.count) "
-                + "lastScreenshotAt=\(self.monitor.state.lastScreenshotAt != nil ? "set" : "nil")")
+            guard let self else {
+                return
+            }
+            log.log("SYNTHETIC-POST after events=\(events.count) "
+                + "lastScreenshotAt=\(monitor.state.lastScreenshotAt != nil ? "set" : "nil")")
         }
     }
 
@@ -223,8 +232,8 @@ final class DemoDetectionProbeView: UIView, ScreenGuardDelegate {
             // Graded in preference to the two keys above: they are read at `finish()`, which runs
             // AFTER the synthetic screenshot post, so they describe the synthetic event rather than
             // the capture-state signal. See `initialState`.
-            "initialCaptureState": initialState.map { $0.state.rawValue } ?? NSNull(),
-            "initialDetectionSource": initialState.map { $0.source } ?? NSNull(),
+            "initialCaptureState": initialState.map(\.state.rawValue) ?? NSNull(),
+            "initialDetectionSource": initialState.map(\.source) ?? NSNull(),
             "lastScreenshotAt": state.lastScreenshotAt.map { ISO8601DateFormatter().string(from: $0) }
                 ?? NSNull(),
             "syntheticScreenshotPostPerformed": true,

@@ -82,7 +82,9 @@ final class SampleBufferHostView: UIView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -92,8 +94,12 @@ final class SampleBufferHostView: UIView {
 
     /// The display layer only paints once it has a frame.
     func enqueue() {
-        guard bounds.width > 1, bounds.height > 1 else { return }
-        guard let image = contentProvider?() else { return }
+        guard bounds.width > 1, bounds.height > 1 else {
+            return
+        }
+        guard let image = contentProvider?() else {
+            return
+        }
         display(image)
     }
 
@@ -101,15 +107,21 @@ final class SampleBufferHostView: UIView {
     @discardableResult
     func display(_ image: CGImage) -> Bool {
         lastProvidedImage = image
-        guard let buffer = CMSampleBufferFactory.make(from: image) else { return false }
+        guard let buffer = CMSampleBufferFactory.make(from: image) else {
+            return false
+        }
         // `sampleBufferRenderer` is the modern spelling (iOS 18+); the pre-18 properties are the
         // same objects and remain functional. Branching keeps the harness buildable at iOS 15.
         if #available(iOS 18.0, *) {
             let renderer = displayLayer.sampleBufferRenderer
-            if renderer.status == .failed { renderer.flush() }
+            if renderer.status == .failed {
+                renderer.flush()
+            }
             renderer.enqueue(buffer)
         } else {
-            if displayLayer.status == .failed { displayLayer.flush() }
+            if displayLayer.status == .failed {
+                displayLayer.flush()
+            }
             displayLayer.enqueue(buffer)
         }
         enqueueCount += 1
@@ -118,19 +130,27 @@ final class SampleBufferHostView: UIView {
     }
 
     var isReadyForMoreMediaData: Bool {
-        if #available(iOS 18.0, *) { return displayLayer.sampleBufferRenderer.isReadyForMoreMediaData }
+        if #available(iOS 18.0, *) {
+            return displayLayer.sampleBufferRenderer.isReadyForMoreMediaData
+        }
         return displayLayer.isReadyForMoreMediaData
     }
 
     var rendererStatus: String {
-        let status: AVQueuedSampleBufferRenderingStatus
-        if #available(iOS 18.0, *) { status = displayLayer.sampleBufferRenderer.status }
-        else { status = displayLayer.status }
+        let status: AVQueuedSampleBufferRenderingStatus = if #available(iOS 18.0, *) {
+            displayLayer.sampleBufferRenderer.status
+        } else {
+            displayLayer.status
+        }
         switch status {
-        case .unknown: return "unknown"
-        case .rendering: return "rendering"
-        case .failed: return "failed"
-        @unknown default: return "?"
+        case .unknown:
+            return "unknown"
+        case .rendering:
+            return "rendering"
+        case .failed:
+            return "failed"
+        @unknown default:
+            return "?"
         }
     }
 }
@@ -139,13 +159,13 @@ private struct SampleBufferHost: UIViewRepresentable {
     let color: UIColor
     let preventsCapture: Bool
 
-    func makeUIView(context: Context) -> SampleBufferHostView {
+    func makeUIView(context _: Context) -> SampleBufferHostView {
         SampleBufferHostView(preventsCapture: preventsCapture) { [color] in
             CMSampleBufferFactory.solidImage(color: color, size: 64)
         }
     }
 
-    func updateUIView(_ uiView: SampleBufferHostView, context: Context) {}
+    func updateUIView(_: SampleBufferHostView, context _: Context) {}
 }
 
 /// Turns a `CGImage` into a `CMSampleBuffer` the display layer will accept.
@@ -157,7 +177,10 @@ enum CMSampleBufferFactory {
         var pixelBuffer: CVPixelBuffer?
         guard CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA,
                                   attributes as CFDictionary, &pixelBuffer) == kCVReturnSuccess,
-              let pixelBuffer else { return nil }
+            let pixelBuffer
+        else {
+            return nil
+        }
 
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         if let base = CVPixelBufferGetBaseAddress(pixelBuffer),
@@ -170,7 +193,8 @@ enum CMSampleBufferFactory {
                space: CGColorSpaceCreateDeviceRGB(),
                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
                    | CGBitmapInfo.byteOrder32Little.rawValue
-           ) {
+           )
+        {
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
@@ -179,7 +203,10 @@ enum CMSampleBufferFactory {
         guard CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
                                                            imageBuffer: pixelBuffer,
                                                            formatDescriptionOut: &format) == noErr,
-              let format else { return nil }
+            let format
+        else {
+            return nil
+        }
 
         var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 60),
                                         presentationTimeStamp: .zero,
@@ -189,7 +216,10 @@ enum CMSampleBufferFactory {
                                                        imageBuffer: pixelBuffer,
                                                        formatDescription: format,
                                                        sampleTiming: &timing,
-                                                       sampleBufferOut: &sampleBuffer) == noErr else { return nil }
+                                                       sampleBufferOut: &sampleBuffer) == noErr
+        else {
+            return nil
+        }
         return sampleBuffer
     }
 
@@ -198,7 +228,10 @@ enum CMSampleBufferFactory {
         color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
         guard let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8,
                                       bytesPerRow: size * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            return nil
+        }
         context.setFillColor(red: red, green: green, blue: blue, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: size, height: size))
         return context.makeImage()
@@ -213,7 +246,7 @@ enum CMSampleBufferFactory {
 private struct SecureFieldView: UIViewRepresentable {
     let text: String
 
-    func makeUIView(context: Context) -> UITextField {
+    func makeUIView(context _: Context) -> UITextField {
         let field = UITextField()
         field.isSecureTextEntry = true
         field.text = text
@@ -226,7 +259,7 @@ private struct SecureFieldView: UIViewRepresentable {
         return field
     }
 
-    func updateUIView(_ uiView: UITextField, context: Context) {}
+    func updateUIView(_: UITextField, context _: Context) {}
 }
 
 /// Harness calibration, not a technique. Identical to the secure field except for the one flag, so
@@ -235,7 +268,7 @@ private struct SecureFieldView: UIViewRepresentable {
 private struct PlainFieldView: UIViewRepresentable {
     let text: String
 
-    func makeUIView(context: Context) -> UITextField {
+    func makeUIView(context _: Context) -> UITextField {
         let field = UITextField()
         field.isSecureTextEntry = false
         field.text = text
@@ -248,7 +281,7 @@ private struct PlainFieldView: UIViewRepresentable {
         return field
     }
 
-    func updateUIView(_ uiView: UITextField, context: Context) {}
+    func updateUIView(_: UITextField, context _: Context) {}
 }
 
 // MARK: - The non-contract trick: park this view's own layer inside the secure field's canvas
@@ -284,11 +317,15 @@ final class SecureLayerSwapView: UIView {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, !didApply else { return }
+        guard window != nil, !didApply else {
+            return
+        }
         didApply = true
         guard enabled else {
             failureReason = "swap disabled (control band)"
@@ -317,8 +354,12 @@ final class SecureLayerSwapView: UIView {
     /// Recursive, because the canvas is not guaranteed to be a direct subview.
     private static func findCanvas(in view: UIView) -> UIView? {
         for subview in view.subviews {
-            if NSStringFromClass(type(of: subview)).contains("LayoutCanvasView") { return subview }
-            if let found = findCanvas(in: subview) { return found }
+            if NSStringFromClass(type(of: subview)).contains("LayoutCanvasView") {
+                return subview
+            }
+            if let found = findCanvas(in: subview) {
+                return found
+            }
         }
         return nil
     }
@@ -327,8 +368,11 @@ final class SecureLayerSwapView: UIView {
 private struct SecureLayerSwapHost: UIViewRepresentable {
     let enabled: Bool
 
-    func makeUIView(context: Context) -> SecureLayerSwapView { SecureLayerSwapView(enabled: enabled) }
-    func updateUIView(_ uiView: SecureLayerSwapView, context: Context) {}
+    func makeUIView(context _: Context) -> SecureLayerSwapView {
+        SecureLayerSwapView(enabled: enabled)
+    }
+
+    func updateUIView(_: SecureLayerSwapView, context _: Context) {}
 }
 
 // MARK: - Root
@@ -351,23 +395,29 @@ struct LabRootView: View {
 struct ProbeRunner: UIViewRepresentable {
     let mode: RunMode
 
-    func makeUIView(context: Context) -> UIView {
+    func makeUIView(context _: Context) -> UIView {
         let view = UIView(frame: .zero)
         view.isUserInteractionEnabled = false
         view.isHidden = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            guard let window = view.window else { return }
+            guard let window = view.window else {
+                return
+            }
             Task { @MainActor in
                 switch mode {
-                case .matrix: await MatrixProbe.run(window: window)
-                case .feasibility: await FeasibilityProbe.run(window: window)
-                case .renderSanity: await RenderSanityProbe.run(window: window)
-                case .replayKit: await ReplayKitProbe.run(window: window)
+                case .matrix:
+                    await MatrixProbe.run(window: window)
+                case .feasibility:
+                    await FeasibilityProbe.run(window: window)
+                case .renderSanity:
+                    await RenderSanityProbe.run(window: window)
+                case .replayKit:
+                    await ReplayKitProbe.run(window: window)
                 }
             }
         }
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {}
+    func updateUIView(_: UIView, context _: Context) {}
 }

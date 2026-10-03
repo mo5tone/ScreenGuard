@@ -25,6 +25,7 @@ struct ColourReading {
     var meanString: String {
         "(\(Int(mean.r.rounded())), \(Int(mean.g.rounded())), \(Int(mean.b.rounded())))"
     }
+
     var medianString: String {
         "(\(Int(median.r.rounded())), \(Int(median.g.rounded())), \(Int(median.b.rounded())))"
     }
@@ -37,7 +38,9 @@ struct TextReading {
     let ratio: Double
     let verdict: Verdict
 
-    var ratioString: String { String(format: "%.2f%%", ratio * 100) }
+    var ratioString: String {
+        String(format: "%.2f%%", ratio * 100)
+    }
 }
 
 /// Reduces a capture image to per-band verdicts by reading pixels.
@@ -48,7 +51,6 @@ struct TextReading {
 ///     path. A path that leaks a secure field's text is a path where every other "NO-LEAK" would
 ///     be unearned.
 enum PixelAnalyzer {
-
     /// Normalises any incoming bitmap to 8-bit-per-component **sRGB** RGBA.
     ///
     /// Two things are being fixed here, and both have already produced wrong numbers once:
@@ -61,12 +63,16 @@ enum PixelAnalyzer {
     static func normalizedRGBA8(_ image: CGImage) -> CGImage? {
         let width = image.width
         let height = image.height
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else {
+            return nil
+        }
         guard let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
             space: sRGB,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        ) else {
+            return nil
+        }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()
     }
@@ -91,7 +97,10 @@ enum PixelAnalyzer {
 
         init?(image: CGImage) {
             guard let data = image.dataProvider?.data,
-                  let pointer = CFDataGetBytePtr(data) else { return nil }
+                  let pointer = CFDataGetBytePtr(data)
+            else {
+                return nil
+            }
             storage = data
             bytes = pointer
             width = image.width
@@ -101,22 +110,30 @@ enum PixelAnalyzer {
         }
 
         func pixel(x: Int, y: Int) -> (r: Int, g: Int, b: Int)? {
-            guard x >= 0, y >= 0, x < width, y < height else { return nil }
+            guard x >= 0, y >= 0, x < width, y < height else {
+                return nil
+            }
             let offset = y * bytesPerRow + x * 4
-            guard offset + 3 < length else { return nil }
+            guard offset + 3 < length else {
+                return nil
+            }
             return (Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]))
         }
     }
 
     /// Normalises `image` and hands a storage-owning bitmap to `body`.
     static func withBitmap<T>(_ image: CGImage, _ body: (Bitmap) -> T) -> T? {
-        guard let normalized = normalizedRGBA8(image), let bitmap = Bitmap(image: normalized) else { return nil }
+        guard let normalized = normalizedRGBA8(image), let bitmap = Bitmap(image: normalized) else {
+            return nil
+        }
         return body(bitmap)
     }
 
     /// Normalises and returns a bitmap that stays valid after this call returns.
     static func bitmap(_ image: CGImage) -> Bitmap? {
-        guard let normalized = normalizedRGBA8(image) else { return nil }
+        guard let normalized = normalizedRGBA8(image) else {
+            return nil
+        }
         return Bitmap(image: normalized)
     }
 
@@ -131,7 +148,9 @@ enum PixelAnalyzer {
         while y < y1 {
             var x = x0
             while x < x1 {
-                if let pixel = bitmap.pixel(x: x, y: y) { pixels.append(pixel) }
+                if let pixel = bitmap.pixel(x: x, y: y) {
+                    pixels.append(pixel)
+                }
                 x += step
             }
             y += step
@@ -147,18 +166,23 @@ enum PixelAnalyzer {
     /// zipping them compares unrelated pixels and reported a mean error of ~51 where the true value
     /// was ~8. Any fidelity comparison between images of different scale must go through this.
     static func sampleGrid(_ bitmap: Bitmap, normalizedRect rect: CGRect,
-                           columns: Int = 64, rows: Int = 64) -> [(Int, Int, Int)] {
-        guard columns > 0, rows > 0 else { return [] }
+                           columns: Int = 64, rows: Int = 64) -> [(Int, Int, Int)]
+    {
+        guard columns > 0, rows > 0 else {
+            return []
+        }
         var pixels: [(Int, Int, Int)] = []
         pixels.reserveCapacity(columns * rows)
-        for row in 0..<rows {
+        for row in 0 ..< rows {
             // Sample at cell centres so both images land on comparable content.
             let fy = rect.minY + rect.height * (Double(row) + 0.5) / Double(rows)
-            for column in 0..<columns {
+            for column in 0 ..< columns {
                 let fx = rect.minX + rect.width * (Double(column) + 0.5) / Double(columns)
                 let x = min(bitmap.width - 1, max(0, Int(fx * Double(bitmap.width))))
                 let y = min(bitmap.height - 1, max(0, Int(fy * Double(bitmap.height))))
-                if let pixel = bitmap.pixel(x: x, y: y) { pixels.append(pixel) }
+                if let pixel = bitmap.pixel(x: x, y: y) {
+                    pixels.append(pixel)
+                }
             }
         }
         return pixels
@@ -198,7 +222,9 @@ enum PixelAnalyzer {
     }
 
     private static func median(_ values: [Int]) -> Int {
-        guard !values.isEmpty else { return 0 }
+        guard !values.isEmpty else {
+            return 0
+        }
         let sorted = values.sorted()
         return sorted[sorted.count / 2]
     }
@@ -206,15 +232,22 @@ enum PixelAnalyzer {
     /// Tolerance is generous (40) because the ReplayKit path re-encodes through a different colour
     /// pipeline; the band colours are far enough apart that 40 cannot confuse two of them.
     private static func classify(mean: (r: Double, g: Double, b: Double), maxChannel: Int,
-                                 distance: Double) -> Verdict {
-        if distance <= 40 { return .leaked }
+                                 distance: Double) -> Verdict
+    {
+        if distance <= 40 {
+            return .leaked
+        }
         // Transparent-and-showing-the-sentinel is a distinct, worse outcome than black: it means the
         // mechanism removed the pixels from the composite rather than painting them black.
         let sentinelDistance = max(abs(mean.r - Double(sentinelRGB.r)),
                                    max(abs(mean.g - Double(sentinelRGB.g)),
                                        abs(mean.b - Double(sentinelRGB.b))))
-        if sentinelDistance <= 40 { return .sentinel }
-        if maxChannel < 32 { return .noLeak }
+        if sentinelDistance <= 40 {
+            return .sentinel
+        }
+        if maxChannel < 32 {
+            return .noLeak
+        }
         return .unknown
     }
 
@@ -231,14 +264,13 @@ enum PixelAnalyzer {
         // A field renders either dots or glyphs across a good fraction of its strip; an empty strip
         // reads as pure band colour. 0.5% cleanly separates those two states.
         let threshold = 0.005
-        let verdict: Verdict
-        switch band {
+        let verdict: Verdict = switch band {
         case .secureTextField:
-            verdict = ratio > threshold ? .textLeaked : .textBlanked
+            ratio > threshold ? .textLeaked : .textBlanked
         case .plainTextFieldReference:
-            verdict = ratio > threshold ? .textLeaked : .textBlanked
+            ratio > threshold ? .textLeaked : .textBlanked
         default:
-            verdict = .unknown
+            .unknown
         }
         return TextReading(band: band, darkPixels: dark, totalPixels: total, ratio: ratio, verdict: verdict)
     }

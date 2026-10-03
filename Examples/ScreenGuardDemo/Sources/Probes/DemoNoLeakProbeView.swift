@@ -25,13 +25,12 @@
 //  lets it decide a verdict.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// The scripted three-region no-leak page.
 @MainActor
 final class DemoNoLeakProbeView: UIView {
-
     private let runID: String
     private let privateOptIn: Bool
 
@@ -69,7 +68,9 @@ final class DemoNoLeakProbeView: UIView {
 
     /// Unavailable. Use `init(runID:privateOptIn:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoNoLeakProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoNoLeakProbeView must be created programmatically")
+    }
 
     // MARK: - Construction
 
@@ -147,7 +148,7 @@ final class DemoNoLeakProbeView: UIView {
 
     /// Builds one labelled region container.
     private func regionContainer(
-        _ region: DemoGeometry.Region,
+        _: DemoGeometry.Region,
         title: String,
         detail: String
     ) -> UIView {
@@ -176,7 +177,9 @@ final class DemoNoLeakProbeView: UIView {
     /// Runs the probe once the view is in a window.
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, pass == 0 else { return }
+        guard window != nil, pass == 0 else {
+            return
+        }
 
         let log = DemoLog.shared
         log.log("=== ScreenGuardDemo no-leak probe \(runID) ===")
@@ -222,7 +225,8 @@ final class DemoNoLeakProbeView: UIView {
         layoutIfNeeded()
 
         guard let image = AppSideReadback.appRender(window: window),
-              let bitmap = AppSideReadback.Bitmap(image: image) else {
+              let bitmap = AppSideReadback.Bitmap(image: image)
+        else {
             log.log("PROBE pass \(pass): the app-side read produced no readable bitmap")
             return
         }
@@ -252,7 +256,9 @@ final class DemoNoLeakProbeView: UIView {
     private func logShieldState() {
         let log = DemoLog.shared
         for (name, container) in [("publicShield", publicContainer), ("privateShield", privateContainer)] {
-            guard let container else { continue }
+            guard let container else {
+                continue
+            }
             let shield = container.shield
             let failure = shield.protectionFailure?.rawValue ?? "none"
             // `requested` comes from the CONTAINER, not from `shield.requestedStrategy`.
@@ -285,7 +291,9 @@ final class DemoNoLeakProbeView: UIView {
 
         var shields: [String: Any] = [:]
         for (name, container) in [("publicShield", publicContainer), ("privateShield", privateContainer)] {
-            guard let container else { continue }
+            guard let container else {
+                continue
+            }
             let shield = container.shield
             shields[name] = [
                 // What the DEMO asked for. Taken from the container: the shield type's own

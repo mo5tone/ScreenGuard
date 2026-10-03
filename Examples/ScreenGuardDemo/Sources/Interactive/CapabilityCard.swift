@@ -19,7 +19,6 @@ import SwiftUI
 
 /// A card for one capability: what it is, how far you can get here, and what you can do about it.
 struct CapabilityCard<Content: View>: View {
-
     /// The section number shown in the badge.
     let number: Int
 
@@ -102,28 +101,32 @@ struct CapabilityCard<Content: View>: View {
 }
 
 extension DemoEnvironment.Reach {
-
     /// The badge's short label.
     var badgeText: String {
         switch self {
-        case .verifiable: return "VERIFY HERE"
-        case .synthetic: return "SYNTHETIC"
-        case .deviceRequired: return "NEEDS DEVICE"
+        case .verifiable:
+            "VERIFY HERE"
+        case .synthetic:
+            "SYNTHETIC"
+        case .deviceRequired:
+            "NEEDS DEVICE"
         }
     }
 
     /// The badge's colour.
     var badgeColour: Color {
         switch self {
-        case .verifiable: return .green
-        case .synthetic: return .orange
-        case .deviceRequired: return .gray
+        case .verifiable:
+            .green
+        case .synthetic:
+            .orange
+        case .deviceRequired:
+            .gray
         }
     }
 }
 
 extension View {
-
     /// Reports this view's frame in global (window) coordinates whenever it changes.
     ///
     /// Used to tell `DemoCapture` where the cards ended up, so it can sample exactly those rectangles

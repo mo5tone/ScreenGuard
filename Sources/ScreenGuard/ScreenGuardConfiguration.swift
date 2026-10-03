@@ -11,7 +11,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public struct ScreenGuardConfiguration: Equatable, Sendable {
-
     /// Detect screenshot events. Default `true`.
     public var isScreenshotDetectionEnabled: Bool
 

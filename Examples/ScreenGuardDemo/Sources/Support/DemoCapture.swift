@@ -36,7 +36,6 @@ import UIKit
 
 /// One region's reading out of a captured frame.
 struct DemoCaptureReading: Identifiable {
-
     /// Identity for `ForEach`.
     let id = UUID()
 
@@ -55,7 +54,6 @@ struct DemoCaptureReading: Identifiable {
 /// The vocabulary matches the verification script's on purpose, so a user who later reads
 /// `docs/evidence/verification-report.md` is reading the same words.
 enum DemoCaptureVerdict: String {
-
     /// The sensitive content's own colour: it is in the capture.
     case sensitive = "SENSITIVE"
 
@@ -73,12 +71,13 @@ enum DemoCaptureVerdict: String {
     case unreadable = "UNREADABLE"
 
     /// Whether this verdict is only explainable by the region being excluded.
-    var indicatesExclusion: Bool { self == .sentinel }
+    var indicatesExclusion: Bool {
+        self == .sentinel
+    }
 }
 
 /// A frame the user captured themselves.
 struct DemoCapturedFrame: Identifiable {
-
     /// Identity for the sheet.
     let id = UUID()
 
@@ -96,14 +95,15 @@ struct DemoCapturedFrame: Identifiable {
 
     /// Whether the read path is demonstrably working, judged from the control alone.
     var readPathIsDemonstrated: Bool {
-        guard let controlVerdict else { return false }
+        guard let controlVerdict else {
+            return false
+        }
         return controlVerdict == .sensitive
     }
 }
 
 /// Takes the app-side read and classifies regions on it.
 enum DemoCapture {
-
     /// Tolerance per channel when matching against the demo's reference colours.
     private static let tolerance = 40
 
@@ -112,7 +112,7 @@ enum DemoCapture {
     private static var keyWindow: UIWindow? {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
+            .flatMap(\.windows)
             .first { $0.isKeyWindow }
     }
 
@@ -126,7 +126,9 @@ enum DemoCapture {
         guard let window = keyWindow,
               let cgImage = AppSideReadback.appRender(window: window),
               let bitmap = AppSideReadback.Bitmap(image: cgImage)
-        else { return nil }
+        else {
+            return nil
+        }
 
         // `appRender` renders `window.bounds` at `scale = 1`, so image pixels and window points are
         // the same units and a frame can be sampled directly.
@@ -162,14 +164,16 @@ enum DemoCapture {
     ) -> (r: Int, g: Int, b: Int)? {
         // Inset so a border, a corner radius or a one-pixel seam cannot dominate the reading.
         let inset = frame.insetBy(dx: frame.width * 0.15, dy: frame.height * 0.15)
-        guard inset.width >= 2, inset.height >= 2 else { return nil }
+        guard inset.width >= 2, inset.height >= 2 else {
+            return nil
+        }
 
         var reds: [Int] = []
         var greens: [Int] = []
         var blues: [Int] = []
         let steps = 9
-        for row in 0..<steps {
-            for column in 0..<steps {
+        for row in 0 ..< steps {
+            for column in 0 ..< steps {
                 let x = inset.minX + inset.width * (CGFloat(column) + 0.5) / CGFloat(steps)
                 let y = inset.minY + inset.height * (CGFloat(row) + 0.5) / CGFloat(steps)
                 guard let pixel = bitmap.pixel(x: Int(x.rounded()), y: Int(y.rounded())) else {
@@ -180,7 +184,9 @@ enum DemoCapture {
                 blues.append(pixel.b)
             }
         }
-        guard !reds.isEmpty else { return nil }
+        guard !reds.isEmpty else {
+            return nil
+        }
         return (median(reds), median(greens), median(blues))
     }
 
@@ -192,11 +198,19 @@ enum DemoCapture {
 
     /// Classifies a sampled colour against the demo's reference colours.
     private static func classify(_ colour: (r: Int, g: Int, b: Int)?) -> DemoCaptureVerdict {
-        guard let colour else { return .unreadable }
+        guard let colour else {
+            return .unreadable
+        }
 
-        if matches(colour, DemoGeometry.sensitiveColour) { return .sensitive }
-        if matches(colour, DemoGeometry.sentinelColour) { return .sentinel }
-        if colour.r < 12, colour.g < 12, colour.b < 12 { return .black }
+        if matches(colour, DemoGeometry.sensitiveColour) {
+            return .sensitive
+        }
+        if matches(colour, DemoGeometry.sentinelColour) {
+            return .sentinel
+        }
+        if colour.r < 12, colour.g < 12, colour.b < 12 {
+            return .black
+        }
         return .other
     }
 
@@ -209,7 +223,9 @@ enum DemoCapture {
         var green: CGFloat = 0
         var blue: CGFloat = 0
         var alpha: CGFloat = 0
-        guard reference.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return false }
+        guard reference.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return false
+        }
         let target = (
             r: Int((red * 255).rounded()),
             g: Int((green * 255).rounded()),

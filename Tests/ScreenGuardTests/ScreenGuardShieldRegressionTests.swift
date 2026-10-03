@@ -20,18 +20,17 @@
 //      `Scripts/verify_capture.sh` — which asserts the private path's state AND its pixels.
 //
 
+@testable import ScreenGuard
 import UIKit
 import XCTest
-@testable import ScreenGuard
 
 @MainActor
 final class ScreenGuardShieldRegressionTests: XCTestCase {
-
     /// The reason string for tests that need the private-API code compiled in.
-    private static let privateTraitReason =
+    static let privateTraitReason =
         "PRIVATEAPI-REQUIRED: the `PrivateAPI` package trait is not enabled in this build, so the "
-        + "private secure-layer engine is not compiled in and cannot be engaged. Run this suite in a "
-        + "trait-enabled checkout, or see Scripts/verify_capture.sh (the example app enables the trait)."
+            + "private secure-layer engine is not compiled in and cannot be engaged. Run this suite in a "
+            + "trait-enabled checkout, or see Scripts/verify_capture.sh (the example app enables the trait)."
 
     // MARK: - Helpers
 
@@ -39,7 +38,7 @@ final class ScreenGuardShieldRegressionTests: XCTestCase {
     ///
     /// It deliberately has no `windowScene`: the tests that need a scene resolve the test host's own
     /// key window instead, and the ones that do not need a scene must not depend on one.
-    private func makeWindow(width: CGFloat = 320, height: CGFloat = 240) -> UIWindow {
+    func makeWindow(width: CGFloat = 320, height: CGFloat = 240) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: height))
         window.rootViewController = UIViewController()
         window.isHidden = false
@@ -48,7 +47,7 @@ final class ScreenGuardShieldRegressionTests: XCTestCase {
     }
 
     /// A shield installed in `makeWindow()`'s hierarchy, laid out.
-    private func makeShieldInAWindow(
+    func makeShieldInAWindow(
         strategy: ScreenGuardNoLeakStrategy,
         window: UIWindow
     ) -> ScreenGuardShieldView {
@@ -60,8 +59,10 @@ final class ScreenGuardShieldRegressionTests: XCTestCase {
     }
 
     /// A solid-colour image, for the rasterisation paths.
-    private static func solidImage(size: CGSize, scale: CGFloat) -> UIImage? {
-        guard size.width > 1, size.height > 1 else { return nil }
+    static func solidImage(size: CGSize, scale: CGFloat) -> UIImage? {
+        guard size.width > 1, size.height > 1 else {
+            return nil
+        }
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = scale
         format.opaque = true
@@ -306,73 +307,6 @@ final class ScreenGuardShieldRegressionTests: XCTestCase {
         XCTAssertEqual(shield.shieldMode, .publicPreventsCaptureLayer)
     }
 
-    // MARK: - F3 — requestedStrategy must track apply(strategy:)
-
-    func testRequestedStrategyFollowsApply() {
-        let shield = ScreenGuardShieldView(strategy: .privateSecureLayer)
-        XCTAssertEqual(shield.requestedStrategy, .privateSecureLayer, "the init-time value must survive")
-
-        shield.apply(strategy: .publicPreventsCaptureLayer)
-        XCTAssertEqual(
-            shield.requestedStrategy,
-            .publicPreventsCaptureLayer,
-            "requestedStrategy must report the LAST request, not the init-time one"
-        )
-
-        shield.apply(strategy: .disabled)
-        XCTAssertEqual(shield.requestedStrategy, .disabled)
-    }
-
-    /// The concrete consequence of F3: the package's own SwiftUI bridge compares
-    /// `requestedStrategy` against the incoming strategy to decide whether to re-apply. When the value
-    /// never converged, EVERY later update re-ran `apply(strategy:)` — a full teardown plus
-    /// re-rasterisation, forever, after the first strategy change.
-    ///
-    /// `ScreenGuardShieldRepresentable` is private to the module, so the comparison is reproduced here
-    /// verbatim from `ScreenGuardModifiers.swift:130`; what it reads (`requestedStrategy`) is the
-    /// property under test. The render counter is observable through the public
-    /// `protectedContentRenderer` seam, and it is the number of times the public path actually
-    /// re-rasterised.
-    func testRequestedStrategyConvergesSoTheSwiftUIBridgeDoesNotReapply() {
-        let window = makeWindow()
-        let shield = makeShieldInAWindow(strategy: .disabled, window: window)
-
-        var renders = 0
-        shield.protectedContentRenderer = { size, scale in
-            renders += 1
-            return ScreenGuardShieldRegressionTests.solidImage(size: size, scale: scale)
-        }
-        shield.setNeedsContentRefresh()
-
-        // The bridge's decision, verbatim.
-        func swiftUIUpdateUIView(strategy: ScreenGuardNoLeakStrategy) {
-            if shield.requestedStrategy != strategy {
-                shield.apply(strategy: strategy)
-            }
-        }
-
-        let rendersBefore = renders
-        swiftUIUpdateUIView(strategy: .publicPreventsCaptureLayer)
-        let rendersAfterFirstUpdate = renders
-
-        XCTAssertGreaterThan(
-            rendersAfterFirstUpdate,
-            rendersBefore,
-            "a genuine strategy change must engage the mechanism (and rasterise)"
-        )
-        XCTAssertEqual(shield.requestedStrategy, .publicPreventsCaptureLayer)
-
-        swiftUIUpdateUIView(strategy: .publicPreventsCaptureLayer)
-        swiftUIUpdateUIView(strategy: .publicPreventsCaptureLayer)
-
-        XCTAssertEqual(
-            renders,
-            rendersAfterFirstUpdate,
-            "a second and third update with the SAME strategy must be a no-op — the bridge must not "
-                + "re-run apply(strategy:) on every update pass (review round 1, F3)"
-        )
-    }
-
     // MARK: - F4 — no deprecated trait override, and no retain cycle from the registration
 
     /// The display-scale registration must not keep the shield alive: the handler receives its trait
@@ -409,258 +343,5 @@ final class ScreenGuardShieldRegressionTests: XCTestCase {
             "the shield must deallocate once the caller releases it — the display-scale trait "
                 + "registration must not retain it"
         )
-    }
-
-    // MARK: - F8 — engaged is not the same as "a frame was pushed"
-
-    func testEngagedIsNotTheSameAsHavingPushedAFrame() {
-        // No window, so no size: the layer is engaged, but nothing can have been pushed into it.
-        let shield = ScreenGuardShieldView(strategy: .publicPreventsCaptureLayer)
-
-        XCTAssertTrue(shield.isProtecting, "isProtecting means the mechanism is engaged")
-        XCTAssertFalse(
-            shield.hasPushedFrame,
-            "no frame can have been pushed before the view has a usable size — a blank region here "
-                + "means 'nothing pushed yet', not 'pixels excluded'"
-        )
-    }
-
-    func testPushingAFrameIsReported() {
-        let window = makeWindow()
-        let shield = makeShieldInAWindow(strategy: .publicPreventsCaptureLayer, window: window)
-
-        shield.protectedContentRenderer = { size, scale in
-            ScreenGuardShieldRegressionTests.solidImage(size: size, scale: scale)
-        }
-        shield.setNeedsContentRefresh()
-        shield.layoutIfNeeded()
-
-        XCTAssertTrue(shield.isProtecting)
-        XCTAssertTrue(
-            shield.hasPushedFrame,
-            "after a successful enqueue the shield must report that a protected frame exists"
-        )
-
-        // And the flag must not be sticky: leaving the public path clears it.
-        shield.apply(strategy: .disabled)
-        XCTAssertFalse(shield.hasPushedFrame)
-        XCTAssertFalse(shield.isProtecting)
-    }
-
-    // MARK: - F9 — the documented initialiser must work without the host ordering it
-
-    /// `ScreenGuardShieldView(strategy: .privateSecureLayer)` is constructed before the shield has a
-    /// window, so engagement cannot happen at `init`. The shield must re-attempt when it joins one.
-    func testShieldReattemptsPrivateEngagementWhenItJoinsAWindow() throws {
-        try requirePrivateTrait()
-
-        let window = makeWindow()
-        ScreenGuard.PrivateAPI.isEnabled = true
-        defer { ScreenGuard.PrivateAPI.isEnabled = false }
-
-        // Created OUTSIDE any window, exactly as the documentation shows.
-        let shield = ScreenGuardShieldView(strategy: .privateSecureLayer)
-        XCTAssertFalse(
-            shield.isProtecting,
-            "without a window the private canvas does not exist, so this must not claim protection"
-        )
-
-        // Joining a window must be enough. No host-side re-apply.
-        shield.translatesAutoresizingMaskIntoConstraints = false
-        window.rootViewController?.view.addSubview(shield)
-        shield.frame = window.bounds
-        shield.layoutIfNeeded()
-
-        XCTAssertTrue(
-            shield.isProtecting,
-            "didMoveToWindow must re-attempt the private path so init(strategy:) behaves as documented"
-        )
-        XCTAssertEqual(shield.shieldMode, .privateSecureLayer)
-        XCTAssertEqual(shield.requestedStrategy, .privateSecureLayer)
-    }
-
-    // MARK: - F7 — the app-switcher failure seam must report something real
-
-    /// The coverability predicate itself, tested directly so the install-time report is not left to
-    /// whatever environment the suite happens to run in. `nil` is the "no window at all" case.
-    func testCoverabilityRequiresAWindowWithAScene() {
-        XCTAssertFalse(
-            ScreenGuardAppSwitcherShield.canCover(window: nil),
-            "a shield with no window has nothing to cover, and must say so rather than stay silent"
-        )
-    }
-
-    /// `install(on:)` must report exactly when the window has no scene to bind the lifecycle signal
-    /// to — and must still install, so a late signal can engage the cover.
-    ///
-    /// Measured: in this XCTest host a bare `UIWindow(frame:)` is given a scene automatically, so the
-    /// `hasScene` branch is the one exercised here. The predicate above covers both directions
-    /// directly, and `testAppSwitcherReportsFailureWhenCoverIsRequestedWithoutInstall` covers the
-    /// other reachable public route to the same report.
-    func testAppSwitcherReportsCoverUnavailableExactlyWhenThereIsNoScene() {
-        let window = makeWindow()
-        let hasScene = window.windowScene != nil
-
-        let shield = ScreenGuardAppSwitcherShield()
-        var reported: [ScreenGuardProtectionFailure] = []
-        shield.onProtectionFailure = { reported.append($0) }
-
-        shield.install(on: window)
-
-        XCTAssertTrue(shield.isInstalled, "the cover is still installed, so a late signal can engage it")
-        if hasScene {
-            XCTAssertTrue(
-                reported.isEmpty,
-                "a window with a scene has a lifecycle signal bound to it, so there is nothing to report"
-            )
-        } else {
-            XCTAssertEqual(reported, [.appSwitcherCoverUnavailable])
-        }
-
-        // Either way, the cover must actually go up when asked.
-        shield.coverNow()
-        XCTAssertEqual(shield.alpha, 1)
-        XCTAssertFalse(shield.isHidden)
-    }
-
-    func testAppSwitcherReportsFailureWhenCoverIsRequestedWithoutInstall() {
-        let shield = ScreenGuardAppSwitcherShield()
-        var reported: [ScreenGuardProtectionFailure] = []
-        shield.onProtectionFailure = { reported.append($0) }
-
-        XCTAssertFalse(shield.isInstalled)
-        shield.coverNow()
-
-        XCTAssertEqual(
-            reported,
-            [.appSwitcherCoverUnavailable],
-            "coverNow() on a shield that was never installed covers nothing and must say so"
-        )
-        XCTAssertEqual(shield.alpha, 0, "and it must not pretend to be covering")
-    }
-
-    func testAppSwitcherDoesNotReportFailureWhenItCanCover() {
-        let window = makeWindow()
-        let shield = ScreenGuardAppSwitcherShield()
-        var reported: [ScreenGuardProtectionFailure] = []
-        shield.onProtectionFailure = { reported.append($0) }
-
-        shield.install(on: window)
-        shield.coverNow()
-        shield.uncoverNow()
-        shield.coverNow()
-
-        XCTAssertEqual(shield.alpha, 1)
-        XCTAssertFalse(shield.isHidden)
-        if window.windowScene != nil {
-            XCTAssertTrue(reported.isEmpty, "a cover that engages must not report a failure")
-        }
-    }
-
-    /// The strengthened monitor test F7 asked for: give the monitor a real window and assert the cover
-    /// is actually installed on it, instead of only asserting that nothing bad happened.
-    ///
-    /// The previous version could not fail — it passed identically if no cover was ever installed.
-    ///
-    /// Measured in this host: `UIApplication.shared.connectedScenes` contains no window at all, so
-    /// `ScreenGuardMonitor.resolvedWindow()` returns `nil` and the monitor cannot install a cover here
-    /// (it waits for a key-window notification instead). The test therefore asserts installation when
-    /// a window exists and SKIPS with that reason when it does not — it never silently degrades back
-    /// to a check that proves nothing. The cover's installation and deactivation synchrony are asserted
-    /// directly against a window in `ScreenGuardAppSwitcherTests`, and end to end by
-    /// `Scripts/verify_capture.sh`, whose app-switcher probe reads back the real installed cover.
-    func testMonitorInstallsTheCoverOnTheKeyWindow() throws {
-        // The monitor resolves its window from `UIApplication.shared.connectedScenes`, so the test has
-        // to supply one. A bare `UIWindow(frame:)` is given a scene by this OS, and making it key makes
-        // it the window `ScreenGuardMonitor.resolvedWindow()` selects.
-        let candidate = makeWindow()
-        candidate.makeKeyAndVisible()
-        defer { candidate.isHidden = true }
-
-        // Mirror the monitor's own resolution order (`ScreenGuardMonitor.resolvedWindow()`): the key
-        // window of a foreground-active scene, else the first window of any connected scene.
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let keyWindow = scenes
-            .first { $0.activationState == .foregroundActive }?
-            .windows
-            .first { $0.isKeyWindow }
-            ?? scenes.first?.windows.first
-
-        guard let keyWindow else {
-            throw XCTSkip(
-                "SCENE-REQUIRED: this test host has no key window in a connected scene, so the monitor "
-                    + "has nothing to install a cover on. The cover's installation and deactivation "
-                    + "synchrony are asserted directly by ScreenGuardAppSwitcherTests, and end to end by "
-                    + "Scripts/verify_capture.sh."
-            )
-        }
-
-        let monitor = ScreenGuardMonitor(
-            configuration: ScreenGuardConfiguration(isAppSwitcherShieldEnabled: true)
-        )
-        monitor.start()
-        defer { monitor.stop() }
-
-        XCTAssertTrue(monitor.isMonitoring)
-        XCTAssertTrue(
-            keyWindow.subviews.contains { $0 is ScreenGuardAppSwitcherShield },
-            "the monitor must install the cover on the key window when the configuration enables it"
-        )
-    }
-
-    // MARK: - Ordinary layer-tree pixel read
-
-    /// Renders a view's ordinary layer tree, the way `ScreenGuardDeviceOnlyTests` does.
-    private static func render(_ view: UIView) -> UIImage {
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        return UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
-            view.layer.render(in: context.cgContext)
-        }
-    }
-
-    /// One normalised sample as `(r, g, b)` in 0...255, normalised to RGBA8 first: the renderer's
-    /// output is 16 bpc, so a raw byte read yields noise (`docs/TOOLING.md` §5).
-    private static func pixel(in image: UIImage, at normalizedPoint: CGPoint) -> (Int, Int, Int)? {
-        guard let cgImage = image.cgImage else { return nil }
-        let width = cgImage.width
-        let height = cgImage.height
-        guard width > 0, height > 0 else { return nil }
-        var bytes = [UInt8](repeating: 0, count: width * height * 4)
-        guard let context = bytes.withUnsafeMutableBytes({ buffer -> CGContext? in
-            CGContext(
-                data: buffer.baseAddress,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width * 4,
-                space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            )
-        }) else { return nil }
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let x = min(width - 1, max(0, Int(normalizedPoint.x * CGFloat(width))))
-        let y = min(height - 1, max(0, Int(normalizedPoint.y * CGFloat(height))))
-        let offset = (y * width + x) * 4
-        return (Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]))
-    }
-
-    private static func components(_ color: UIColor) -> (Int, Int, Int) {
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        return (Int(red * 255), Int(green * 255), Int(blue * 255))
-    }
-
-    private static func channelDistance(_ lhs: (Int, Int, Int), _ rhs: (Int, Int, Int)) -> Int {
-        max(abs(lhs.0 - rhs.0), max(abs(lhs.1 - rhs.1), abs(lhs.2 - rhs.2)))
-    }
-
-    // MARK: - Trait gate
-
-    /// Skips with the documented reason when the private-API code is not compiled into this build.
-    private func requirePrivateTrait() throws {
-        guard ScreenGuard.PrivateAPI.isCompiledIn else {
-            throw XCTSkip(Self.privateTraitReason)
-        }
     }
 }

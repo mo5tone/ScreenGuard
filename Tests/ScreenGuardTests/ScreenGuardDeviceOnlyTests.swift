@@ -16,17 +16,16 @@
 //  human or hardware it skips, and says exactly which.
 //
 
+@testable import ScreenGuard
 import UIKit
 import XCTest
-@testable import ScreenGuard
 
 @MainActor
 final class ScreenGuardDeviceOnlyTests: XCTestCase {
-
     /// The exact reason string, so it is greppable from the device verification scripts (t4).
     private static let deviceReason =
         "DEVICE-REQUIRED: not measurable on Simulator — see docs/TOOLING.md §7 and "
-        + "docs/evidence/capability-matrix.md §4/§7. Run on a physical device."
+            + "docs/evidence/capability-matrix.md §4/§7. Run on a physical device."
 
     /// The reason for checks that need a human action or an artifact that cannot be read in-process,
     /// even on a device.
@@ -68,53 +67,17 @@ final class ScreenGuardDeviceOnlyTests: XCTestCase {
         // own; a distinctly-coloured backing is what makes "covered" interpretable
         // (docs/TOOLING.md §3).
         let sentinel = UIColor(red: 200 / 255, green: 0, blue: 160 / 255, alpha: 1)
-
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
-        let root = UIView(frame: window.bounds)
-        root.backgroundColor = sentinel
-        window.rootViewController = UIViewController()
-        window.rootViewController?.view = root
-        window.isHidden = false
+        // Content the region must not leak: a colour that is neither the shield nor the sentinel.
+        let secret = UIColor(red: 38 / 255, green: 102 / 255, blue: 242 / 255, alpha: 1)
 
         // The shield covers the TOP 200 of 240 points, leaving a 40pt sentinel strip below it. That
         // strip is the control: if it does not read the sentinel, the readback is not working and the
-        // assertion below is meaningless.
-        let shield = ScreenGuardShieldView(strategy: .publicPreventsCaptureLayer)
-        shield.shieldColor = .black
-        shield.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(shield)
-        NSLayoutConstraint.activate([
-            shield.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            shield.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            shield.topAnchor.constraint(equalTo: root.topAnchor),
-            shield.heightAnchor.constraint(equalToConstant: 200)
-        ])
-        root.layoutIfNeeded()
-
-        // Content the region must not leak: a colour that is neither the shield nor the sentinel.
-        let secret = UIColor(red: 38 / 255, green: 102 / 255, blue: 242 / 255, alpha: 1)
-        shield.protectedContentRenderer = { size, _ in
-            let format = UIGraphicsImageRendererFormat.default()
-            format.scale = 1
-            format.opaque = true
-            return UIGraphicsImageRenderer(
-                bounds: CGRect(origin: .zero, size: size),
-                format: format
-            ).image { context in
-                secret.setFill()
-                context.fill(CGRect(origin: .zero, size: size))
-            }
-        }
-        shield.setNeedsContentRefresh()
-        root.layoutIfNeeded()
+        // assertions below are meaningless.
+        let (window, shield) = try sentinelWindowWithCoveringShield(sentinel: sentinel, secret: secret)
 
         XCTAssertEqual(shield.frame.height, 200, "the shield must occupy only the top portion")
 
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        let readback = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { context in
-            root.layer.render(in: context.cgContext)
-        }
+        let readback = layerTreeReadback(of: window)
 
         // Inside the shield (y ≈ 0.42 of 240pt → ~100pt, well within the shield).
         let insideShield = try XCTUnwrap(
@@ -148,6 +111,61 @@ final class ScreenGuardDeviceOnlyTests: XCTestCase {
             "protected region read the content colour \(Self.components(secret))"
         )
     }
+
+    // MARK: - Helpers
+
+    /// A window whose root view is painted in the sentinel colour, with a renderer-backed shield
+    /// covering its TOP 200 of 240 points and the secret as the content it must not leak.
+    private func sentinelWindowWithCoveringShield(
+        sentinel: UIColor,
+        secret: UIColor
+    ) -> (window: UIWindow, shield: ScreenGuardShieldView) {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
+        let root = UIView(frame: window.bounds)
+        root.backgroundColor = sentinel
+        window.rootViewController = UIViewController()
+        window.rootViewController?.view = root
+        window.isHidden = false
+
+        let shield = ScreenGuardShieldView(strategy: .publicPreventsCaptureLayer)
+        shield.shieldColor = .black
+        shield.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(shield)
+        NSLayoutConstraint.activate([
+            shield.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            shield.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            shield.topAnchor.constraint(equalTo: root.topAnchor),
+            shield.heightAnchor.constraint(equalToConstant: 200),
+        ])
+        root.layoutIfNeeded()
+
+        shield.protectedContentRenderer = { size, _ in
+            let format = UIGraphicsImageRendererFormat.default()
+            format.scale = 1
+            format.opaque = true
+            return UIGraphicsImageRenderer(
+                bounds: CGRect(origin: .zero, size: size),
+                format: format
+            ).image { context in
+                secret.setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
+        }
+        shield.setNeedsContentRefresh()
+        root.layoutIfNeeded()
+        return (window, shield)
+    }
+
+    /// Reads the window picture back through the ordinary layer tree at 1x.
+    private func layerTreeReadback(of window: UIWindow) -> UIImage {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { context in
+            window.rootViewController?.view.layer.render(in: context.cgContext)
+        }
+    }
+
+    //   which pins that measurement.
 
     // MARK: - 2. The public preventsCapture path
 
@@ -273,10 +291,14 @@ final class ScreenGuardDeviceOnlyTests: XCTestCase {
     /// The image is normalised to RGBA8 first: `UIGraphicsImageRenderer` output is **16 bpc / 64 bpp**,
     /// so a raw byte read yields noise (`docs/TOOLING.md` §5).
     private static func pixel(in image: UIImage, at normalizedPoint: CGPoint) -> (Int, Int, Int)? {
-        guard let cgImage = image.cgImage else { return nil }
+        guard let cgImage = image.cgImage else {
+            return nil
+        }
         let width = cgImage.width
         let height = cgImage.height
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else {
+            return nil
+        }
 
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         guard let context = bytes.withUnsafeMutableBytes({ buffer -> CGContext? in
@@ -289,7 +311,9 @@ final class ScreenGuardDeviceOnlyTests: XCTestCase {
                 space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             )
-        }) else { return nil }
+        }) else {
+            return nil
+        }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let x = min(width - 1, max(0, Int(normalizedPoint.x * CGFloat(width))))

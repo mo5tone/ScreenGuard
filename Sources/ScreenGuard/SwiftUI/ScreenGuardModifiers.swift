@@ -19,7 +19,6 @@ import SwiftUI
 // MARK: - Protected content
 
 public extension View {
-
     /// Marks this view's content as sensitive and shields it from leaking into captures.
     ///
     /// SwiftUI content is not a `UIView`, so this modifier hands the shield a **render closure** and
@@ -79,7 +78,6 @@ public extension View {
 /// documented confound. Storing the content as a stored property of a real `View` is what makes the
 /// rasteriser work.
 struct ScreenGuardProtectedView<ProtectedContent: View>: View {
-
     /// The content to protect. A STORED value, not a modifier placeholder — see the type note.
     let content: ProtectedContent
 
@@ -118,7 +116,6 @@ struct ScreenGuardProtectedView<ProtectedContent: View>: View {
 /// has no window, so SwiftUI resolves its own sizing rather than inheriting it.
 @MainActor
 enum ScreenGuardSwiftUIRasterizer {
-
     /// Renders `content` at `size` and `scale`.
     ///
     /// - Parameters:
@@ -126,8 +123,10 @@ enum ScreenGuardSwiftUIRasterizer {
     ///   - size: The target size in points.
     ///   - scale: The target scale.
     /// - Returns: The rendered image, or `nil` when `size` is degenerate.
-    static func image<Content: View>(of content: Content, size: CGSize, scale: CGFloat) -> UIImage? {
-        guard size.width > 1, size.height > 1 else { return nil }
+    static func image(of content: some View, size: CGSize, scale: CGFloat) -> UIImage? {
+        guard size.width > 1, size.height > 1 else {
+            return nil
+        }
 
         if #available(iOS 16.0, *) {
             let renderer = ImageRenderer(content: content)
@@ -144,13 +143,12 @@ enum ScreenGuardSwiftUIRasterizer {
 
 /// The UIKit bridge behind `screenGuardProtected(strategy:refreshPolicy:)`.
 private struct ScreenGuardShieldRepresentable: UIViewRepresentable {
-
     let strategy: ScreenGuardNoLeakStrategy
     let refreshPolicy: ScreenGuardRefreshPolicy
     let onProtectionFailure: ((ScreenGuardProtectionFailure) -> Void)?
     let renderer: (CGSize, CGFloat) -> UIImage?
 
-    func makeUIView(context: Context) -> ScreenGuardShieldView {
+    func makeUIView(context _: Context) -> ScreenGuardShieldView {
         let shield = ScreenGuardShieldView(strategy: strategy)
         shield.refreshPolicy = refreshPolicy
         shield.protectedContentRenderer = renderer
@@ -158,7 +156,7 @@ private struct ScreenGuardShieldRepresentable: UIViewRepresentable {
         return shield
     }
 
-    func updateUIView(_ uiView: ScreenGuardShieldView, context: Context) {
+    func updateUIView(_ uiView: ScreenGuardShieldView, context _: Context) {
         if uiView.requestedStrategy != strategy {
             uiView.apply(strategy: strategy)
         }
@@ -172,7 +170,6 @@ private struct ScreenGuardShieldRepresentable: UIViewRepresentable {
 // MARK: - Watermark
 
 public extension View {
-
     /// Overlays a tiled forensic watermark.
     ///
     /// **DETERRENT AND FORENSIC ONLY — removes no pixels.** It makes a leak attributable; it protects
@@ -190,14 +187,13 @@ public extension View {
 
 /// The UIKit bridge behind `screenGuardWatermarked(_:)`.
 private struct ScreenGuardWatermarkRepresentable: UIViewRepresentable {
-
     let configuration: ScreenGuardWatermarkConfiguration
 
-    func makeUIView(context: Context) -> ScreenGuardWatermarkView {
+    func makeUIView(context _: Context) -> ScreenGuardWatermarkView {
         ScreenGuardWatermarkView(configuration: configuration)
     }
 
-    func updateUIView(_ uiView: ScreenGuardWatermarkView, context: Context) {
+    func updateUIView(_ uiView: ScreenGuardWatermarkView, context _: Context) {
         uiView.configuration = configuration
         uiView.refresh()
     }
@@ -206,7 +202,6 @@ private struct ScreenGuardWatermarkRepresentable: UIViewRepresentable {
 // MARK: - App-switcher cover
 
 public extension View {
-
     /// Covers this view (or the window) while the scene is inactive, protecting the app-switcher
     /// snapshot.
     ///
@@ -227,10 +222,10 @@ public extension View {
 
 /// Observes scene phase and covers its content while the scene is inactive.
 struct ScreenGuardAppSwitcherModifier: ViewModifier {
-
     let style: ScreenGuardAppSwitcherStyle
 
-    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.scenePhase)
+    private var scenePhase
 
     func body(content: Content) -> some View {
         content
@@ -248,16 +243,15 @@ struct ScreenGuardAppSwitcherModifier: ViewModifier {
 
 /// Renders the cover for the SwiftUI modifier.
 private struct ScreenGuardAppSwitcherCoverRepresentable: UIViewRepresentable {
-
     let style: ScreenGuardAppSwitcherStyle
 
-    func makeUIView(context: Context) -> ScreenGuardAppSwitcherShield {
+    func makeUIView(context _: Context) -> ScreenGuardAppSwitcherShield {
         let shield = ScreenGuardAppSwitcherShield(style: style)
         shield.coverNow()
         return shield
     }
 
-    func updateUIView(_ uiView: ScreenGuardAppSwitcherShield, context: Context) {
+    func updateUIView(_ uiView: ScreenGuardAppSwitcherShield, context _: Context) {
         uiView.style = style
         uiView.coverNow()
     }

@@ -15,13 +15,12 @@
 //      ignoring the switch.
 //
 
-import SwiftUI
 import ScreenGuard
+import SwiftUI
 
 /// The demo's user-facing settings.
 @MainActor
 final class DemoSettings: ObservableObject {
-
     // MARK: - No-leak shield
 
     /// The strategy the protected card requests.
@@ -102,7 +101,9 @@ final class DemoSettings: ObservableObject {
 
     /// The watermark configuration for the marked card, or `nil` when it is switched off.
     var watermarkConfiguration: ScreenGuardWatermarkConfiguration? {
-        guard watermarkEnabled else { return nil }
+        guard watermarkEnabled else {
+            return nil
+        }
         return ScreenGuardWatermarkConfiguration(
             text: watermarkText.isEmpty ? "CONFIDENTIAL" : watermarkText,
             secondaryText: "demo session 4417",

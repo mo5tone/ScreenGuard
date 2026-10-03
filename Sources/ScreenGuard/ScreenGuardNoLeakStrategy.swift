@@ -17,7 +17,6 @@ import Foundation
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardNoLeakStrategy: String, Equatable, Sendable {
-
     /// No protection. The shield renders content normally. For debugging and layout work only.
     case disabled
 
@@ -48,7 +47,6 @@ public enum ScreenGuardNoLeakStrategy: String, Equatable, Sendable {
 ///
 /// iOS 15-compatible — no availability guard is required.
 public enum ScreenGuardRefreshPolicy: Equatable, Sendable {
-
     /// Refresh only when `setNeedsContentRefresh()` is called. Cheapest. Default.
     case manual
 

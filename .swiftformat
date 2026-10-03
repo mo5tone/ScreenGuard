@@ -1,0 +1,40 @@
+# =============================================================================================
+# SwiftFormat configuration — the reference formatter for this repository.
+#
+# Enforced by `mise run format:check` (no writes, exit 1 on any difference) and applied by
+# `mise run format` (writes). The pinned version is SwiftFormat 0.63.0 (.mise.toml). The rule set
+# is SwiftFormat's DEFAULT rule set plus three rules enabled below, so "the formatter did it" is
+# always reproducible — nothing is disabled here.
+# =============================================================================================
+
+# Swift language version. REQUIRED: without it SwiftFormat prints
+#   "No Swift version was specified, so some formatting features were disabled"
+# and the gate would silently depend on whichever toolchain happens to be installed.
+# 5.9 is the SWIFT_VERSION declared by both generated projects (Examples/ScreenGuardDemo and
+# Research/CaptureMatrix project.yml); the package pins `.swiftLanguageMode(.v5)` in Package.swift,
+# so no Swift 6-only source transformation is wanted here.
+--swiftversion 5.9
+
+# Preprocessor directives do not re-indent their body. Same style as the existing code, and it
+# matters for review: Sources/ScreenGuard/Shield/ScreenGuardPrivateSecureLayer.swift is one ~320
+# line `#if SCREENGUARD_PRIVATE_API` region, so `indent` would re-indent the whole file and bury
+# every real change. (Layout only — the tokens are identical either way.)
+--ifdef noindent
+
+# ---------------------------------------------------------------------------------------------
+# Rules enabled on top of the default set. All three exist to make SwiftLint's opt-in rules
+# satisfiable by the formatter instead of by hand (or by a `disabled_rules` entry):
+#
+#   wrapGuardStatementBodies  -> one-line `guard x else { return }` becomes a wrapped body, which
+#                                is what SwiftLint's `conditional_returns_on_newline` requires.
+#   wrapCaseBodies            -> switch cases get their body on a new line, which is what
+#                                SwiftLint's `switch_case_on_newline` requires.
+#   the three attribute options -> declarations' @attributes move to the line above, which is what
+#                                SwiftLint's `attributes` rule requires (but only where it is
+#                                required: simple attributes on stored vars stay inline).
+# ---------------------------------------------------------------------------------------------
+--enable wrapGuardStatementBodies
+--enable wrapCaseBodies
+--func-attributes prev-line
+--type-attributes prev-line
+--complex-attributes prev-line

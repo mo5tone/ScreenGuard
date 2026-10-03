@@ -28,8 +28,7 @@ import UIKit
 
 // MARK: - The public opt-in flag
 
-extension ScreenGuard {
-
+public extension ScreenGuard {
     /// The explicit, **off-by-default** opt-in gate for the private-API path.
     ///
     /// Two independent acts are required to reach `ScreenGuardNoLeakStrategy.privateSecureLayer`, and
@@ -50,8 +49,7 @@ extension ScreenGuard {
     /// - Warning: The private path is **non-contract, fragile across iOS releases, an App Review risk,
     ///   and never a security guarantee.** It must never be described as secure, guaranteed, safe,
     ///   recommended, production-ready, or App-Store-safe (`docs/api-contract.md` §9.5).
-    public enum PrivateAPI {
-
+    enum PrivateAPI {
         /// Whether the private path is permitted to engage. Default `false`.
         ///
         /// Set it once, early, and document the App Review decision at the call site:
@@ -73,7 +71,9 @@ extension ScreenGuard {
         /// `false` unless the consumer enabled the `PrivateAPI` package trait
         /// (`docs/api-contract.md` §9.4). A host app can assert on this to prove the class-name string
         /// is not in its binary.
-        @MainActor public static var isCompiledIn: Bool { ScreenGuardPrivateSecureLayerFactory.isCompiledIn }
+        @MainActor public static var isCompiledIn: Bool {
+            ScreenGuardPrivateSecureLayerFactory.isCompiledIn
+        }
     }
 }
 
@@ -88,7 +88,6 @@ extension ScreenGuard {
 ///   `ScreenGuardPrivateSecureLayer.swift`.
 @MainActor
 protocol ScreenGuardPrivateSecureLayerEngaging: AnyObject {
-
     /// Why engagement failed, when it did.
     var failure: ScreenGuardProtectionFailure? { get }
 
@@ -122,7 +121,6 @@ protocol ScreenGuardPrivateSecureLayerEngaging: AnyObject {
 /// Held by `ScreenGuardShieldView`, which means the protection a host engaged is released when the
 /// shield is released — the package can promise to *undo* what it did, not only to do it.
 final class ScreenGuardPrivateLayerOwner {
-
     private var engine: (any ScreenGuardPrivateSecureLayerEngaging)?
 
     /// Adopts `engine`, releasing any previously adopted one first.
@@ -135,17 +133,23 @@ final class ScreenGuardPrivateLayerOwner {
     ///
     /// `@MainActor` because the seam it reads is (`docs/api-contract.md` §10: every public and
     /// private-path type is main-actor isolated). The owner itself deliberately is not.
-    @MainActor var isEngaged: Bool { engine?.isEngaged ?? false }
+    @MainActor var isEngaged: Bool {
+        engine?.isEngaged ?? false
+    }
 
     /// Restores the arrangement now and gives up ownership. Safe to call repeatedly.
     func release() {
-        guard let engine else { return }
+        guard let engine else {
+            return
+        }
         self.engine = nil
         Self.disengage(engine)
     }
 
     deinit {
-        if let engine { Self.disengage(engine) }
+        if let engine {
+            Self.disengage(engine)
+        }
     }
 
     /// Calls `disengage()` on the main actor, without assuming the current executor is main.
@@ -168,12 +172,13 @@ final class ScreenGuardPrivateLayerOwner {
 /// `docs/api-contract.md` §9.4 requires, and no private class-name string exists in the binary.
 @MainActor
 enum ScreenGuardPrivateSecureLayerFactory {
-
     /// Whether the private path is compiled into this build at all.
     static let isCompiledIn = false
 
     /// - Returns: Always `nil` in this configuration.
-    static func make() -> (any ScreenGuardPrivateSecureLayerEngaging)? { nil }
+    static func make() -> (any ScreenGuardPrivateSecureLayerEngaging)? {
+        nil
+    }
 }
 
 #endif

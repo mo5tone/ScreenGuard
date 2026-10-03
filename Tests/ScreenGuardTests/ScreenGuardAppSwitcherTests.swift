@@ -11,12 +11,11 @@
 //  device-validated only — see `ScreenGuardDeviceOnlyTests`.
 //
 
-import XCTest
 @testable import ScreenGuard
+import XCTest
 
 @MainActor
 final class ScreenGuardAppSwitcherTests: XCTestCase {
-
     // MARK: - Install lifecycle
 
     func testInstallAndUninstallAreIdempotent() {
@@ -110,7 +109,7 @@ final class ScreenGuardAppSwitcherTests: XCTestCase {
             .blur(style: .systemMaterial),
             .opaque(color: .systemBackground),
             .branded(image: nil, backgroundColor: .systemBackground),
-            .branded(image: UIImage(), backgroundColor: .black)
+            .branded(image: UIImage(), backgroundColor: .black),
         ]
 
         for style in styles {
@@ -124,10 +123,12 @@ final class ScreenGuardAppSwitcherTests: XCTestCase {
     func testStyleIsExhaustivelySwitchable() {
         let style = ScreenGuardAppSwitcherStyle.opaque(color: .red)
         switch style {
-        case .blur(let blurStyle):
+        case let .blur(blurStyle):
             XCTFail("unexpected blur \(blurStyle)")
-        case .opaque(let color):
+
+        case let .opaque(color):
             XCTAssertEqual(color, .red)
+
         case .branded:
             XCTFail("unexpected branded")
         }
@@ -150,7 +151,13 @@ final class ScreenGuardAppSwitcherTests: XCTestCase {
         // No window is guaranteed in a unit-test host, so the shield may be pending installation.
         // What must hold is that start()/stop() are safe and no spurious degraded event is emitted.
         XCTAssertTrue(monitor.isMonitoring)
-        XCTAssertTrue(events.allSatisfy { if case .protectionDegraded = $0.kind { return false } else { return true } })
+        XCTAssertTrue(events.allSatisfy { event in
+            if case .protectionDegraded = event.kind {
+                false
+            } else {
+                true
+            }
+        })
     }
 
     func testMonitorDoesNotInstallTheShieldWhenDisabled() {

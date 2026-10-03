@@ -19,13 +19,12 @@
 //  exercised here at all. Rather than delete the check, it is asserted as an explicit skip.
 //
 
+@testable import ScreenGuard
 import UIKit
 import XCTest
-@testable import ScreenGuard
 
 @MainActor
 final class ScreenGuardRasterizerTests: XCTestCase {
-
     /// A view whose top half is red and bottom half is blue. Orientation errors are visible
     /// immediately, which a single solid colour would hide.
     private func makeSplitView(size: CGSize) -> UIView {
@@ -183,10 +182,14 @@ final class ScreenGuardRasterizerTests: XCTestCase {
     /// Normalises to RGBA8 before reading: `UIGraphicsImageRenderer` output is 16 bpc / 64 bpp, so a
     /// raw byte read yields noise (`docs/TOOLING.md` §5).
     private func pixel(in image: UIImage, at normalizedPoint: CGPoint) -> (Int, Int, Int)? {
-        guard let cgImage = image.cgImage else { return nil }
+        guard let cgImage = image.cgImage else {
+            return nil
+        }
         let width = cgImage.width
         let height = cgImage.height
-        guard width > 0, height > 0 else { return nil }
+        guard width > 0, height > 0 else {
+            return nil
+        }
 
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         guard let context = bytes.withUnsafeMutableBytes({ buffer -> CGContext? in
@@ -199,7 +202,9 @@ final class ScreenGuardRasterizerTests: XCTestCase {
                 space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             )
-        }) else { return nil }
+        }) else {
+            return nil
+        }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let x = min(width - 1, max(0, Int(normalizedPoint.x * CGFloat(width))))

@@ -23,13 +23,12 @@
 //  script can check, independently of the app, that the mark tiles cover the whole view.
 //
 
-import UIKit
 import ScreenGuard
+import UIKit
 
 /// The scripted watermark page.
 @MainActor
 final class DemoWatermarkProbeView: UIView {
-
     private let runID: String
 
     /// The band that wears the watermark.
@@ -63,7 +62,9 @@ final class DemoWatermarkProbeView: UIView {
 
     /// Unavailable. Use `init(runID:)`.
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("DemoWatermarkProbeView must be created programmatically") }
+    required init?(coder _: NSCoder) {
+        fatalError("DemoWatermarkProbeView must be created programmatically")
+    }
 
     // MARK: - Construction
 
@@ -118,7 +119,9 @@ final class DemoWatermarkProbeView: UIView {
     /// Runs the probe once the view is in a window.
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, pass == 0 else { return }
+        guard window != nil, pass == 0 else {
+            return
+        }
 
         let log = DemoLog.shared
         log.log("=== ScreenGuardDemo watermark probe \(runID) ===")
@@ -157,7 +160,8 @@ final class DemoWatermarkProbeView: UIView {
         layoutIfNeeded()
 
         guard let image = AppSideReadback.appRender(window: window),
-              let bitmap = AppSideReadback.Bitmap(image: image) else {
+              let bitmap = AppSideReadback.Bitmap(image: image)
+        else {
             log.log("PROBE pass \(pass): the app-side read produced no readable bitmap")
             return
         }
