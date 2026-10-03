@@ -358,3 +358,17 @@ overlay-shield and watermark features should be treated as *deterrent and forens
 leak prevention, because neither removes pixels from a capture. The immediate next action is a single
 device run of `renderSanity`, `matrix` and `feasibility`, which is what converts the package's
 central claim from *plausible* to *measured*.
+
+
+## 9. Note on the committed artifacts
+
+The raw logs committed under `Research/Artifacts/<run>/` are published **verbatim**, because an edited
+transcript stops being evidence: `app-documents/*.log`, `unified-log.txt`, `build.log`,
+`toolchain.txt` and `launch.txt` are exactly what the harness produced. They therefore contain
+absolute paths from the machine that produced them (for example
+`/Users/<user>/Developer/ScreenGuarantor/...`). Those path prefixes are the only content that
+identifies the machine's owner — the user name in them is `jiefu`; Simulator device UDIDs
+(`CoreSimulator/Devices/<udid>/…`) and `/Applications/Xcode.app` paths appear as well, and they
+identify no person. No credential, token, password or key appears in any of them, and nothing is
+redacted: the logs are left unedited on purpose so a reader can re-run the exact command each log
+shows.

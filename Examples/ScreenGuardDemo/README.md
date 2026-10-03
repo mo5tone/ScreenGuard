@@ -38,9 +38,12 @@ cd Examples/ScreenGuardDemo && xcodegen generate
 
 > ⚠️ **After a fresh clone, regenerate the project.** The repository's root `.gitignore` carries a
 > `*.xcodeproj` rule, so `ScreenGuardDemo.xcodeproj` is **not** committed and a new checkout contains
-> only `project.yml`. Run `xcodegen generate` in this directory (one line, `brew install xcodegen`)
-> before using the `xcodebuild` command above. `Scripts/verify_capture.sh` does this for you
-> automatically when the project is missing, if XcodeGen is installed.
+> only `project.yml`. Run `xcodegen generate` in this directory — XcodeGen comes from the pinned
+> toolchain, so set it up once at the repository root with `mise trust` then `mise install` (a fresh
+> clone's `.mise.toml` is untrusted), or run `mise run generate` there to regenerate both projects
+> ([`docs/TOOLING.md`](../../docs/TOOLING.md) §11) — before using the `xcodebuild` command above.
+> `Scripts/verify_capture.sh` does this for you automatically when the project is missing, using the
+> mise-managed XcodeGen when it is available.
 
 ### One command for the whole verification
 

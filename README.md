@@ -1,5 +1,12 @@
 # ScreenGuard
 
+[![CI](https://github.com/mo5tone/ScreenGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/mo5tone/ScreenGuard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform: iOS 15+](https://img.shields.io/badge/platform-iOS%2015%2B-lightgrey.svg)](#install)
+
+<!-- Deliberately no release or version badge: this repository has never been tagged and no version
+     has been released, so a badge implying one would be false. See CHANGELOG.md and docs/PUBLISHING.md. -->
+
 **Keep sensitive content out of screenshots, screen recordings and the app-switcher snapshot — and report honestly where iOS will not let any app do that.**
 
 ScreenGuard is a zero-dependency, iOS 15+, drop-in Swift package for financial and other sensitive
@@ -27,7 +34,8 @@ it does.
 The rest of this document is written to that bar. Where a capability is designed but not yet proven,
 it is marked **device-pending**; where the platform makes something impossible, it is marked
 **notPossible**. Device-only claims are never presented as passes (see
-[Capability matrix](#capability-matrix) and [What is not proven yet](#what-is-not-proven-yet)).
+[Capability matrix](#capability-matrix--the-quotable-status-table), [Known limitations](#known-limitations) and
+[What a green badge does not prove](#a-green-ci-badge-is-not-a-proof-of-every-row-in-the-capability-table)).
 
 ---
 
@@ -96,13 +104,20 @@ AVFoundation, CoreMedia, CoreGraphics, SwiftUI, Combine, Foundation — nothing 
 ### Swift Package Manager
 
 ```swift
-// In your own Package.swift
+// In your own Package.swift — the form to use once a version is tagged.
 dependencies: [
-    .package(url: "https://github.com/YOUR-ORG/ScreenGuard.git", from: "1.0.0"),
+    .package(url: "https://github.com/mo5tone/ScreenGuard.git", from: "1.0.0"),
 ],
 targets: [
     .target(name: "YourApp", dependencies: ["ScreenGuard"]),
 ]
+```
+
+**No version has been tagged yet**, so `from: "1.0.0"` resolves nothing today. Until the first
+`vX.Y.Z` tag is pushed, depend on the branch or on a commit:
+
+```swift
+.package(url: "https://github.com/mo5tone/ScreenGuard.git", branch: "main"),
 ```
 
 ### Xcode — "Add Package"
@@ -111,14 +126,13 @@ targets: [
 product to your app target, then `import ScreenGuard`. No capabilities, entitlements, Info.plist keys
 or build settings are required.
 
-> This repository does not assert a canonical remote URL; substitute the URL you publish it at.
 
 ### To also compile in the opt-in private path
 
 Add the `PrivateAPI` **package trait** to the same dependency line — one line, no fork:
 
 ```swift
-.package(url: "https://github.com/YOUR-ORG/ScreenGuard.git", from: "1.0.0", traits: ["PrivateAPI"])
+.package(url: "https://github.com/mo5tone/ScreenGuard.git", from: "1.0.0", traits: ["PrivateAPI"])
 ```
 
 Leave the trait out (the default) and the private code is **never compiled** into your build. See
@@ -126,28 +140,114 @@ Leave the trait out (the default) and the private code is **never compiled** int
 
 ### Building this repository
 
-`swift build` and `swift test` **do not work** for this iOS-only package — plain SwiftPM resolves the
-macOS SDK and fails with `unable to resolve module dependency: 'UIKit'`. Use `xcodebuild` with an iOS
-destination:
+The toolchain is pinned with [mise](https://mise.jdx.dev): SwiftFormat, SwiftLint, XcodeGen,
+actionlint, shellcheck and git-cliff all come from [`.mise.toml`](.mise.toml) at exact versions, and
+the [`mise` tasks](.mise.toml) are the interface. **A fresh clone must trust and install it first.**
+The failure mode is narrower than "nothing works", and it is worth knowing which half fails: the
+*discovery* commands — `mise tasks`, `mise ls`, `mise env` — exit 1 with
+`Config files … are not trusted` until the config is trusted, while `mise run <task>` auto-trusts
+the repository config in normal mode and then runs. That asymmetry is why the CI "trust the
+repository mise config" step checks with `mise tasks`: it is the command that actually fails
+when trust is missing. Run `mise trust` first anyway:
 
 ```sh
-# build the package
-xcodebuild build -scheme ScreenGuard \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-  -derivedDataPath .build/dd
+mise trust      # required first: a fresh clone's .mise.toml is untrusted
+mise install    # fetch the pinned versions
+mise tasks      # the task names this repository guarantees
+```
 
-# run the test suite
-xcodebuild test -scheme ScreenGuard \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-  -derivedDataPath .build/dd
+Then, from the repository root:
 
-# the whole end-to-end example verification (builds the demo, drives it, samples its PNGs)
-Scripts/verify_capture.sh
+```sh
+mise run generate      # regenerate both .xcodeproj bundles from their project.yml specs
+mise run build         # xcodebuild build -scheme ScreenGuard, for the iOS Simulator
+mise run test          # xcodebuild test -scheme ScreenGuard
+mise run demo:verify   # the end-to-end example verification — boots a Simulator, drives the demo,
+                       # samples its PNGs and prints PASS / FAIL / DEVICE / SKIP / FINDING per check
+mise run ci:local      # the whole blocking chain in CI's order: generate → format:check → lint →
+                       # shellcheck → build → test → demo:build, then advisory lint:demo
+```
+
+> `swift build` and `swift test` **do not work** for this iOS-only package — plain SwiftPM resolves
+> the macOS SDK and fails with `unable to resolve module dependency: 'UIKit'`. That is why the tasks
+> call `xcodebuild` with an explicit iOS Simulator destination, and why this repository does not treat
+> the plain SwiftPM CLI as a gate ([docs/TOOLING.md §1](docs/TOOLING.md)).
+
+**Choosing a Simulator.** The tasks default to
+`platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2`. Override it in the environment — an external
+value wins over the default:
+
+```sh
+DESTINATION='platform=iOS Simulator,name=iPhone 17 Pro,OS=26.0' mise run test
+```
+
+**Device-only checks.** Print the physical-device procedure with:
+
+```sh
+mise run demo:verify -- --print-device-command
 ```
 
 `swift-tools-version` is **6.1** (required for package traits); the library target pins
 `.swiftLanguageMode(.v5)` so the Swift 6 language mode is not imposed on the source. See
-`docs/TOOLING.md` for the verified environment facts and traps.
+[`docs/TOOLING.md`](docs/TOOLING.md) for the verified environment facts and traps.
+
+---
+
+## What this repository enforces — and what a green badge does not prove
+
+### Conventions that are gates, not suggestions
+
+- **SwiftFormat and SwiftLint run in strict mode and block.** `mise run format:check` fails if any
+  file would change, and `mise run lint` runs `swiftlint lint --strict` over `Sources` and `Tests`,
+  so a warning is a failure. Both run on every pull request and every push to `main`, and the tool
+  versions are pinned in [`.mise.toml`](.mise.toml) — a floating formatter or linter version can
+  start failing an unchanged tree. `mise run lint:demo` covers the example app and the research
+  harness **advisory only**: it reports known, deferred style debt in that code and always exits 0.
+- **Pull-request titles are Conventional Commits** (`type(scope): subject`). CI rejects a
+  non-conforming title, and the same history is what the release notes are generated from.
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) §4 is the list of permitted types, with examples — that
+  section is the source, so read it there rather than relying on a copy here.
+- **Generated Xcode projects are never committed.**
+  [`Examples/ScreenGuardDemo/project.yml`](Examples/ScreenGuardDemo/project.yml) and
+  [`Research/CaptureMatrix/project.yml`](Research/CaptureMatrix/project.yml) are the source of truth;
+  `mise run generate` rebuilds the `.xcodeproj` bundles, which `.gitignore` excludes.
+
+**Run `mise run ci:local` before you push.** It is the exact local equivalent of the CI validation
+chain, and the first failing step aborts the run with its own exit code.
+
+### Continuous integration and delivery
+
+| Workflow | When | What it does |
+|---|---|---|
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | every pull request and every push to `main` | three jobs: the pull-request-title check; the fast quality gates (SwiftFormat `--lint`, `swiftlint --strict`, shellcheck over `Scripts/`, actionlint over the workflows); and a macOS build-and-test job that installs the mise-pinned toolchain, proves the Xcode projects are generated-and-untracked artifacts, then builds, tests and builds the demo |
+| [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | push to `main` | builds the DocC archive and publishes it to GitHub Pages |
+| [`.github/workflows/verification.yml`](.github/workflows/verification.yml) | nightly and on demand | boots a Simulator and runs `Scripts/verify_capture.sh`, publishing the PASS / FAIL / DEVICE / SKIP / FINDING verdict and uploading the artifacts. Device-only checks report `DEVICE` / `SKIP` there and are **not** validated by the run |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | a `vX.Y.Z` tag push **only** | **dormant today.** It re-runs the full validation on the tagged commit, cross-checks the tag against this changelog, then publishes a GitHub Release with generated notes. No tag has been pushed, so nothing has been published — see [`docs/PUBLISHING.md`](docs/PUBLISHING.md) |
+
+### A green CI badge is not a proof of every row in the capability table
+
+> CI runs on a **Simulator**, and the capability contract is explicit about what a Simulator cannot
+> answer. It cannot fire a real screenshot, the ReplayKit recording path delivers no frames there,
+> app-switcher snapshot pixels are not decodable, and the public `preventsCapture` path paints
+> nothing at all — so its blank region is unearned. Every `device-pending` and `notMeasured` cell
+> therefore stays **unproven by CI**; those are claims it withholds, not claims CI verifies. The
+> device procedure that converts them is
+> [`docs/evidence/device-run-procedure.md`](docs/evidence/device-run-procedure.md), and the
+> device-only cells are enumerated in
+> [`docs/evidence/capability-matrix.md`](docs/evidence/capability-matrix.md) §7.
+>
+> What CI does prove is narrower, and stated exactly: the pinned toolchain resolved, formatting and
+> lint are clean, the package builds, the Simulator-checkable tests passed (see
+> [Current measurement on the current tree](#current-measurement-on-the-current-tree)), and the
+> example app — the only gate that compiles the trait-gated private path — builds too.
+>
+> **One more gap, stated rather than implied: the private path's runtime behaviour is measured by a
+> manual example run, not by a required check.** The six `PRIVATEAPI-REQUIRED` tests skip in every
+> per-pull-request and release configuration, because the package build does not enable the trait.
+> `mise run demo:build` compiles the trait-gated code — which is what catches a defect *in* it — but no
+> required check *executes* row 5 of the capability table. The example run (`mise run demo:verify`,
+> nightly and on demand via [`.github/workflows/verification.yml`](.github/workflows/verification.yml),
+> never a pull-request gate) is what measures that row.
 
 ---
 
@@ -450,45 +550,80 @@ merely shows a picture is never counted as proof of leakage (see `docs/TOOLING.m
 | [`docs/evidence/capability-matrix.md`](docs/evidence/capability-matrix.md) | The authoritative measured technique × capture-path matrix: 8 colour bands (5 techniques + 3 controls) through the app-side render path, the ReplayKit path and a host contrast path. Source of every number quoted here |
 | [`docs/evidence/verification-report.md`](docs/evidence/verification-report.md) | Independent verification (task t5): clean-room build and test, the no-leak claim re-derived from raw pixels with its control bands, deliberate falsification attempts, availability and private-gating checks, and the list of what is **not** earned |
 | [`docs/evidence/review-round1.md`](docs/evidence/review-round1.md) | Independent review, round 1 (task t6): the findings that were open, including the two `high` findings (a live-hierarchy leak and a private path that could never report success) that were subsequently repaired |
-| [`docs/evidence/review-round2.md`](docs/evidence/review-round2.md) | Independent review, round 2 (task t11): **verdict pass** — all round-1 findings closed, re-derived from source and probes; the load-bearing end-to-end re-measurement; and the one open `medium` finding (F-R2-1, the SwiftUI private path) recorded in [Known limitations](#known-limitations) |
+| [`docs/evidence/review-round2.md`](docs/evidence/review-round2.md) | Independent review, round 2 (task t11): **verdict pass** — all round-1 findings closed, re-derived from source and probes; the load-bearing end-to-end re-measurement; and the one open `medium` finding it recorded (F-R2-1, the SwiftUI private path), since repaired — see [Known limitations](#known-limitations) and [`docs/evidence/repair-fr2-1.md`](docs/evidence/repair-fr2-1.md) |
 | [`docs/api-contract.md`](docs/api-contract.md) | The normative public API contract and honest capability guarantees; §4 is the table lifted verbatim above |
 | [`docs/TOOLING.md`](docs/TOOLING.md) | Verified environment facts, valid-vs-invalid evidence paths, and reproduced traps |
+| [`docs/PUBLISHING.md`](docs/PUBLISHING.md) | How a release is produced when versioning starts: the `v` tag convention, what the release workflow proves and what it cannot, and this repository's rule that a capability claim needs a measurement with a control |
 | [`docs/evidence/device-run-procedure.md`](docs/evidence/device-run-procedure.md) | The one-command device validation procedure that converts the `device-pending` cells into measured results |
 
 The honest division of labour: `capability-matrix.md` is the measurement, `verification-report.md` is
 the independent check of it, the two review rounds are the adversarial check of the package, and
 `docs/api-contract.md` is the contract the other three bound.
 
-### Final end-to-end verification
+### End-to-end verification — the historical run of record
 
-Run after all writers stopped, with a dedicated derived-data path (`.build/final-dd`), on the
-verified environment (Xcode 27.0, Swift 6.4, iPhone 17 Pro simulator, iOS 26.2). `swift build` /
-`swift test` are expected to **fail** for this iOS-only package and are not part of the gate.
+**Historical.** This is the run that stood when the evidence set was frozen, on the tree as it was on
+2026-10-02, with a dedicated derived-data path (`.build/final-dd`), on Xcode 27.0 / Swift 6.4 /
+iPhone 17 Pro simulator / iOS 26.2. Its test figures are **not reproducible on the current tree** —
+the suite has grown since, and the current measurement is below. It is kept as the record of what was
+measured then, not as a claim about today. `swift build` / `swift test` are expected to **fail** for
+this iOS-only package and are not part of the gate.
 
 | Check | Command | Result |
 |---|---|---|
 | Release artifacts exist | `test -s README.md && test -s LICENSE && test -s CHANGELOG.md` | **exit 0** — all three files exist and are non-empty |
 | Package library build | `xcodebuild build -scheme ScreenGuard -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' -derivedDataPath .build/final-dd` | **exit 0 · `** BUILD SUCCEEDED **`** — `arm64-apple-ios15.0-simulator`, `deployment-target 15.0`, iPhoneSimulator27.0.sdk (Xcode 27A266a), **0 warnings** |
-| Test suite | `xcodebuild test -scheme ScreenGuard -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' -derivedDataPath .build/final-dd` | **exit 0 · `** TEST SUCCEEDED **`** — `Executed 124 tests, with 11 tests skipped and 0 failures (0 unexpected) in 0.388 (0.433) seconds`; each skip carries a stated reason (6 pre-existing, 4 `PRIVATEAPI`-required, 1 scene-required). The only `warning:` in the log is the toolchain's `appintentsmetadataprocessor` note — **0 source warnings** |
+| Test suite | `xcodebuild test -scheme ScreenGuard -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' -derivedDataPath .build/final-dd` | **exit 0 · `** TEST SUCCEEDED **`** — `Executed 124 tests, with 11 tests skipped and 0 failures (0 unexpected) in 0.388 (0.433) seconds`. **Superseded:** the tree today reports `Executed 131 tests, with 13 tests skipped` (see below). The only `warning:` in the log was the toolchain's `appintentsmetadataprocessor` note — **0 source warnings** |
 | Example app + end-to-end pixel verification | `Scripts/verify_capture.sh --run-id t7-final` | **exit 0 · `RESULT: PASSED`** — `PASS 22 · FAIL 0 · FIND 0 · SKIP 0 · DEVICE 4`, including `[PASS] shield self-report agrees with the measured pixels  isProtecting=True` and `[PASS] no-leak: private path excludes the region from the capture  app-side=200,0,160 -> SENTINEL` with the region still `[PASS] still VISIBLE on the display`. The public `preventsCapture` path, the recording path, the real screenshot event and the app-switcher snapshot pixels were reported `[DEVICE]`, never as passes |
 
 Raw logs: `/tmp/t7-build.log`, `/tmp/t7-test.log`, `/tmp/t7-example.log`; example artifacts in
-`.build/verify-capture/t7-final/`. `swift build` / `swift test` were **not** run: they fail by design
-for this iOS-only package (`unable to resolve module dependency: 'UIKit'`), which `docs/TOOLING.md` §1
-records and this repository does not treat as a gate.
+`.build/verify-capture/t7-final/`.
+
+### Current measurement on the current tree
+
+Re-measured on 2026-10-03, after the code-style baseline, by running the commands this README
+documents. Every number below comes from a run on the current tree; the test result bundle is under
+`.build/test-dd/Logs/Test/`, and the example artifacts are in `.build/verify-capture/t6-docs/`.
+
+| Check | Command | Result |
+|---|---|---|
+| Formatting gate | `mise run format:check` | **exit 0** — `0/71 files require formatting, 2 files skipped.` **Counted on the published tree**, where the third skipped file (`Research/Artifacts/README.md`) is absent because `.gitignore` drops it; a working tree that still has that file reports 3 |
+| Lint gate (strict) | `mise run lint` | **exit 0** — `Found 0 violations, 0 serious in 39 files.` |
+| Shell gate | `mise run shellcheck` | **exit 0** — no findings at `--severity=error` |
+| Package library build | `mise run build` | **exit 0 · `** BUILD SUCCEEDED **`** |
+| Test suite | `mise run test` | **exit 0 · `** TEST SUCCEEDED **`** — `Executed 131 tests, with 13 tests skipped and 0 failures (0 unexpected) in 0.279 (0.321) seconds` |
+| Demo build, trait **enabled** | `mise run demo:build` | **exit 0 · `** BUILD SUCCEEDED **`** — the only gate that compiles the trait-gated `PrivateAPI` code, and therefore the only one that can catch a defect in it ([`docs/TOOLING.md`](docs/TOOLING.md) §12) |
+| Example app + end-to-end pixel verification | `mise run demo:verify -- --run-id t6-docs` | **exit 0 · `RESULT: PASSED`** — `PASS 29 · FAIL 0 · FINDING 0 · SKIP 0 · DEVICE 4`; the four device-required checks printed `[DEVICE]` and the run states plainly that they are **not** validated by it |
+| Whole blocking chain, in CI order | `mise run ci:local` | **exit 0** — `generate → format:check → lint → shellcheck → build → test → demo:build`, then advisory `lint:demo` (`257 violations, 257 serious in 31 files` across `Examples/` and `Research/`, reported and not gated) |
+
+**The 13 skips are all explicit and all reasoned — none is silent:** 6 require the `PrivateAPI` trait
+(off in this build), 5 require a physical device, and 2 require a connected `UIWindowScene` that a
+unit-test host does not have. The `PrivateAPI` group is
+the reason a green test run says nothing about the private path — see
+[`docs/TOOLING.md`](docs/TOOLING.md) §12.
+
+`swift build` / `swift test` were **not** run: they fail by design for this iOS-only package
+(`unable to resolve module dependency: 'UIKit'`), which [`docs/TOOLING.md`](docs/TOOLING.md) §1 records
+and this repository does not treat as a gate.
 
 ---
 
 ## Repository layout
 
 ```
-Package.swift                 swift-tools-version 6.1; one product; zero dependencies; the PrivateAPI trait
-Sources/ScreenGuard/          the library — 21 Swift files, one module, `import ScreenGuard`
-Tests/ScreenGuardTests/       XCTest suite (unit + regression; private/scene tests skip with a reason)
-Examples/ScreenGuardDemo/     a real app target that consumes the package by relative path
-Scripts/verify_capture.sh     the one-command example verification (PASS / FAIL / DEVICE / SKIP / FINDING)
-Research/CaptureMatrix/       the measurement harness behind docs/evidence/capability-matrix.md
-docs/                         the contract, the tooling facts and the evidence
+Package.swift                  swift-tools-version 6.1; one product; zero dependencies; the PrivateAPI trait
+.mise.toml                     the pinned toolchain and the task runner — the supported way to build
+.swiftformat, .swiftlint.yml   the enforced formatting and lint configuration
+Sources/ScreenGuard/           the library — 25 Swift files, one module, `import ScreenGuard`
+Tests/ScreenGuardTests/        XCTest suite — 14 files, 131 test methods, 13 skips each with a reason
+Examples/ScreenGuardDemo/      a real app target that consumes the package by relative path. Its
+                               ScreenGuardDemo.xcodeproj is GENERATED from project.yml and is never tracked
+Scripts/verify_capture.sh      the one-command example verification (PASS / FAIL / DEVICE / SKIP / FINDING)
+Scripts/ci/                    CI helpers: the pull-request-title gate, the destination preflight, the
+                               generated-and-untracked proof, the toolchain record, branch protection
+Research/CaptureMatrix/        the measurement harness behind docs/evidence/capability-matrix.md
+docs/                          the contract, the tooling facts, the publishing procedure and the evidence
+.github/workflows/             CI, DocC → GitHub Pages, nightly verification, and the dormant release pipeline
 ```
 
 ## Privacy
@@ -500,4 +635,8 @@ seams for it are `ScreenGuardDelegate` and `ScreenGuardMonitor.onEvent`.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Release history: [`CHANGELOG.md`](CHANGELOG.md).
+MIT — see [`LICENSE`](LICENSE).
+
+**There is no release history yet: no version has been tagged.** The changelog
+([`CHANGELOG.md`](CHANGELOG.md)) records the unreleased work, and
+[`docs/PUBLISHING.md`](docs/PUBLISHING.md) describes how the first release will be produced.

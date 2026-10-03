@@ -5,9 +5,42 @@ All notable changes to ScreenGuard are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **No version has been released.** This repository has never been tagged and no GitHub Release
+> exists. The `[1.0.0]` section below is a **development milestone** — it records where the work stood
+> on that date — and must not be read as a published release. The release pipeline
+> (`.github/workflows/release.yml`) is dormant until a `vX.Y.Z` tag is pushed, and nothing in this
+> file creates one; the maintainer procedure is [`docs/PUBLISHING.md`](docs/PUBLISHING.md).
+
 ---
 
 ## [Unreleased]
+
+### Changed
+
+- **Formatting and linting are now enforced gates.** SwiftFormat and SwiftLint run in strict mode
+  over the shipped library and its tests (`mise run format:check`, `mise run lint` —
+  `swiftlint lint --strict`, where a warning is a failure), with every tool version pinned in
+  [`.mise.toml`](.mise.toml), and both gates block in CI. Reaching a clean tree required one
+  baseline commit: 62 files required formatting before it.
+- **The reformat is behaviour-preserving, and that is measured rather than assumed.** On the
+  reformatted tree, `mise run test` reports `Executed 131 tests, with 13 tests skipped and 0
+  failures (0 unexpected)`, and the public surface is unchanged — **0 declarations added, 0
+  removed** (310 declarations by `declKind`, 1220 named nodes on both revisions). The stronger
+  check is the emitted library-evolution interface, not the digester dump alone: `@preconcurrency`
+  appears **6 times in both revisions** and the `ScreenGuardShieldView` class line is byte-identical.
+  The interface’s remaining deltas are grouping only: the order of the declaration blocks, and one
+  extra extension block because setNeedsContentRefresh() now lives in the ScreenGuardShieldView+Refresh
+  file rather than in the class body. Every declaration line — names, parameter names and signatures —
+  is identical, so no symbol was renamed, added, removed or re-signatured.
+  The one defect the reformat introduced was **not** caught by either signal: it sat in a file the
+  test configuration does not compile, and only the trait-enabled demo build exposed it. The
+  incident and its consequences for CI are recorded in [`docs/TOOLING.md`](docs/TOOLING.md) §12.
+- **The demo and research harnesses' pre-existing lint debt is deferred explicitly, not silently
+  excluded.** The blocking gate is scoped to `Sources` and `Tests`; the example app and the
+  measurement harness are reported by `mise run lint:demo`, which is advisory by design and always
+  exits 0 (currently `257 violations, 257 serious in 31 files`). Those files were deliberately kept
+  outside the blocking gate rather than dropped from the configuration's scope, and the debt is
+  enumerated rather than hidden.
 
 ### Fixed
 
@@ -49,11 +82,14 @@ Full record, with the raw before/after output:
 
 ---
 
-## [1.0.0] — 2026-10-02
+## [1.0.0] — 2026-10-02 — development milestone, never tagged or published
 
-First public release. `ScreenGuard.version == "1.0.0"`.
+**Never released.** This is the state of the work on that date: there is no `v1.0.0` tag and no
+GitHub Release. `ScreenGuard.version == "1.0.0"` is the version string the source carried at that
+point, not a snapshot anyone could download; the first tag will be the maintainer's to choose
+([`docs/PUBLISHING.md`](docs/PUBLISHING.md)).
 
-### The promise this release makes — and does not
+### The promise this version makes — and does not
 
 **iOS does not allow an app to prevent the user from taking a screenshot or starting a screen
 recording**, and this package does not claim to. Its guarantee is that **sensitive content does not
@@ -120,9 +156,6 @@ of a screenshot or a recording is `notPossible` on every iOS version.
 - The public `preventsCapture` path and the whole recording / mirroring / AirPlay path are
   **device-pending** and **notMeasured** respectively. Neither carries a working guarantee yet; the
   device procedure is `Scripts/verify_capture.sh --print-device-command`.
-- The **SwiftUI** route to the private strategy currently renders no content while reporting
-  engaged protection (fail-closed, no leak). The UIKit private entry point is the measured one.
-  Tracked as the open `medium` finding F-R2-1 in `docs/evidence/review-round2.md`.
 - On the public path the shield is a **refreshed snapshot**, not a live view.
 - A direct in-process `CALayer.render(in:)` read defeats both the secure text field and the
   secure-layer swap; host-side capture (`simctl io screenshot`, sim-use) bypasses protection by
@@ -132,6 +165,10 @@ of a screenshot or a recording is `notPossible` on every iOS version.
   file (the two frameworks coexist in one target).
 
 ### Verification
+
+*Historical record of the run at that date, on the pre-code-style-baseline tree. The figures are
+reproducible only on that revision; the current measured run is in [`Unreleased`](#unreleased) and in
+the README's [current measurement](README.md#current-measurement-on-the-current-tree).*
 
 - Build: `xcodebuild build` — succeeds with **0 source warnings** at `arm64-apple-ios15.0` (also
   verified at an iOS 26.0 deployment target, where round 1 had measured 1 warning).

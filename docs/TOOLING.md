@@ -510,3 +510,151 @@ zero-sized, and `ScreenGuardShieldView(strategy:)` is typically built outside an
 `.manual` refresh policy therefore never produces a first frame unless the shield retries from
 `layoutSubviews`. Any future render-closure consumer needs that retry; without it the shield is a
 permanent black card and every check that only asks "is it blank?" passes.
+
+---
+
+## 11. The toolchain — `mise` is the only supported way to get these tools
+
+Added with the toolchain task (t1). Every gate in this repository is a tool invocation, so the gate is
+only reproducible if the **tool version** is pinned. A Homebrew or global install drifts: SwiftLint
+and SwiftFormat add rules between releases, shellcheck turns on new checks in minor versions, and a
+formatter release re-indents code. An unpinned tool therefore lets an **unchanged** tree start failing
+— or, worse, lets a reformat rewrite files nobody edited.
+
+The single source is [`.mise.toml`](../.mise.toml) at the repository root:
+
+| Tool | Pinned version | What it backs |
+|---|---|---|
+| SwiftLint | 0.65.1 | `mise run lint` (blocking, `--strict`) and `mise run lint:demo` (advisory) |
+| SwiftFormat | 0.63.0 | `mise run format` (writes) and `mise run format:check` (CI) |
+| XcodeGen | 2.46.0 | `mise run generate` — both `.xcodeproj` bundles |
+| actionlint | 1.7.12 | workflow YAML linting (`mise exec -- actionlint`) |
+| shellcheck | 0.11.0 | `mise run shellcheck` (`--severity=error` over `Scripts/`) |
+| git-cliff | 2.14.2 | the release notes generated in `.github/workflows/release.yml` |
+
+`xcodebuild`, `xcrun` and `swift` are deliberately **not** pinned by mise: they come from the
+installed Xcode, and no `mise run …` task substitutes for `swift build`/`swift test`, which do not
+work here (§1).
+
+### 11.1 A fresh clone's config is UNTRUSTED — trust it before anything else
+
+Measured on a fresh clone: mise refuses to read the repository config, and every task fails until it
+is trusted —
+
+```
+Config files ... are not trusted. Trust them with mise trust
+```
+
+so the first three commands, in this order, are:
+
+```sh
+mise trust      # required first: records THIS repository path as trusted on this machine
+mise install    # fetches the pinned versions
+mise tasks      # lists the task names this repository guarantees
+```
+
+Trust is per-machine state (this machine records it under `~/.local/state/mise/trusted-configs/`), not
+something the repository can carry — which is exactly why a reader's first command can fail while the
+maintainer's succeeds. The CI workflows run `mise trust` explicitly, for the same reason.
+
+### 11.2 The task names are frozen; only the repository's tasks are the contract
+
+`mise run <task>` works from any subdirectory: every task sets `dir = "{{config_root}}"`. The eleven
+names — `generate`, `lint`, `lint:demo`, `format`, `format:check`, `build`, `test`, `demo:build`,
+`demo:verify`, `shellcheck`, `ci:local` — are consumed by CI, by the documentation and by the other
+tasks by name. Which of them block is documented once, in [`CONTRIBUTING.md`](../CONTRIBUTING.md) §3.
+
+**Trap, measured:** `mise tasks` also lists tasks inherited from your personal global mise config (3
+on this maintainer's machine). Those are not this repository's contract and they do not exist on CI —
+never depend on one in a documented command or a gate.
+
+### 11.3 The macOS runner is not this machine — Xcode and SDK differ
+
+| | Local (this machine) | `macos-26` GitHub runner |
+|---|---|---|
+| Xcode | 27.0 (27A266a), Swift 6.4 | **26.6 (17F113)** — the image's default |
+| iOS SDK | `iPhoneSimulator27.0.sdk` | **iOS 26.5** (`iphonesimulator26.5`; the iOS 26.2 SDK is installed too) |
+| Simulator runtimes | iOS 26.0, 26.2 and 26.5 installed | iOS **26.2**, whose device list includes iPhone 17 Pro |
+
+Consequences, stated plainly:
+
+* A green `mise run ci:local` here is **not** a prediction that CI is green there. The SDK difference
+  can surface a diagnostic that does not appear locally — a deprecation, or a stricter availability
+  check. The correct repair makes the source clean under **both** SDKs; never silence the gate.
+* The workflows record the actual Xcode, SDK, runtimes and pinned tool versions into the job summary
+  on every run, so a difference is visible in the run rather than guessed at.
+* The default destination (`platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2`) appears on the
+  runner image's installed-simulator list, and the CI preflight fails loudly when a destination cannot
+  be resolved instead of falling back to a different device.
+* Sources: the `macos-26` image manifest in `actions/runner-images`
+  (`images/macos/macos-26-Readme.md`, image `20260824.0517.1`) for the runner column;
+  `xcodebuild -version`, `swift --version` and `xcrun simctl list runtimes` on this machine for the
+  local column.
+
+---
+
+## 12. ⚠️ The trait-gated private path is NOT covered by the test suite
+
+Added after the code-style baseline (t2). This is the most expensive lesson of this project's tooling
+work, because it makes a whole category of green signal mean less than it looks like it means.
+
+### 12.1 The fact
+
+`Sources/ScreenGuard/Shield/ScreenGuardPrivateSecureLayer.swift` is wrapped in
+`#if SCREENGUARD_PRIVATE_API`, and `SCREENGUARD_PRIVATE_API` is defined **only** when the `PrivateAPI`
+trait is enabled (`Package.swift`):
+
+```swift
+.define("SCREENGUARD_PRIVATE_API", .when(traits: ["PrivateAPI"]))
+```
+
+With the trait off — the default, and the configuration `mise run build` and `mise run test` use —
+that file **is not compiled at all**. The suite does not compensate for it: 6 of the 13 skips exist
+precisely because the trait is off (`PRIVATEAPI`-required), so in the default configuration they step
+over the path rather than exercise it. The one gate in the chain
+that compiles it is `mise run demo:build` (and therefore `demo:verify`), because the example app's
+spec enables the trait — `Examples/ScreenGuardDemo/project.yml`, `traits: ["PrivateAPI"]`.
+
+### 12.2 The worked example
+
+During the format baseline, SwiftFormat's `redundantSelf` rule rewrote
+
+```swift
+self.canvas = canvas        // the property  <-  the located canvas view
+```
+
+into
+
+```swift
+canvas = canvas             // a self-assignment: the property is never set
+```
+
+because a local named `canvas` was in scope, which made the leading `self.` look redundant.
+
+What stayed green: `mise run build` (**BUILD SUCCEEDED**) and the entire test suite (`Executed 131
+tests, with 13 tests skipped and 0 failures`), because neither configuration compiles the file.
+
+What caught it: `mise run demo:build` — the trait-**enabled** build — where `canvas` resolves to the
+local (a `let`) and the same line is a **compile error**. The repair renamed the shadowing local to
+`locatedCanvas`, which also removes the shadowing that the original rename was meant to address, so
+the assignment is unambiguous again:
+
+```swift
+canvas = locatedCanvas      // ScreenGuardPrivateSecureLayer.swift, engage()
+```
+
+### 12.3 The consequence, stated plainly
+
+* **"The tests pass" is not evidence for the private path.** No amount of green in `mise run test`
+  says anything about `ScreenGuardPrivateSecureLayer.swift` — the file was not in the build.
+* **`demo:build` is the only gate that compiles it**, so it is the only automated coverage that code
+  has.
+* **Removing `demo:build` from CI would silently remove the only coverage of that code**, and it would
+  not look like a loss, because every other gate would stay green. Do not drop it, and do not "speed
+  up CI" by making it conditional.
+* The same reasoning applies to any file behind a build setting: a check that runs in a configuration
+  where the code is not compiled is a check about something else.
+
+**Transferable rule:** when a code path is gated by a trait, a `#if` or any other build-time switch,
+keep at least one gate with the switch **on**, and make its failure visible — otherwise the green
+signals you trust are silently about a different program than the one you ship.
