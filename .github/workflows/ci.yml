@@ -41,6 +41,18 @@
 #   runtimes and the mise-pinned tool versions it actually used (see Scripts/ci/print-toolchain.sh,
 #   whose output also lands in the job summary). `mise run ci:local` passing on a developer machine
 #   is NOT evidence that this workflow is green on the runner's SDK; only a run of this workflow is.
+#
+# ABOUT "Using the first of multiple matching destinations" IN THE LOGS
+#   Every xcodebuild step here passes the same explicit -destination, and on the runner that spec
+#   resolves to TWO candidates which are the SAME device id on the SAME runtime and differ only in
+#   architecture slice. Measured in run 37120888088 (2026-10-03):
+#     { platform:iOS Simulator, arch:arm64,  id:5FEB61C5-E3F5-471D-AE23-8A07438D5E92, OS:26.2, name:iPhone 17 Pro }
+#     { platform:iOS Simulator, arch:x86_64, id:5FEB61C5-E3F5-471D-AE23-8A07438D5E92, OS:26.2, name:iPhone 17 Pro }
+#   So no device, no runtime and no name is being chosen silently — the OS=26.2 pin is exactly what
+#   keeps the matching set that narrow — and the "Resolve the Simulator destination" step above
+#   resolves the same spec to that single UDID before any build starts. The warning is a
+#   runner-image artefact (both architecture slices of one simulator are advertised), not a
+#   fallback: a destination that did NOT resolve would fail that step loudly instead of warning here.
 # =============================================================================================
 
 name: CI
